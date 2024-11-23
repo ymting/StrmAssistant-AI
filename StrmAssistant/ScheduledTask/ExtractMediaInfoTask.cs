@@ -22,7 +22,7 @@ namespace StrmAssistant
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             _logger.Info("MediaInfoExtract - Scheduled Task Execute");
-            _logger.Info("Max Concurrent Count: " + Plugin.Instance.GetPluginOptions().MediaInfoExtractOptions.MaxConcurrentCount);
+            _logger.Info("Max Concurrent Count: " + Plugin.Instance.GetPluginOptions().GeneralOptions.MaxConcurrentCount);
             var enableImageCapture = Plugin.Instance.GetPluginOptions().MediaInfoExtractOptions.EnableImageCapture;
             _logger.Info("Enable Image Capture: " + enableImageCapture);
             var enableIntroSkip = Plugin.Instance.GetPluginOptions().IntroSkipOptions.EnableIntroSkip;
@@ -44,7 +44,14 @@ namespace StrmAssistant
                     break;
                 }
 
-                await QueueManager.SemaphoreMaster.WaitAsync(cancellationToken);
+                try
+                {
+                    await QueueManager.SemaphoreMaster.WaitAsync(cancellationToken);
+                }
+                catch
+                {
+                    break;
+                }
                 
                 var taskIndex = ++index;
                 var taskItem = item;
@@ -52,6 +59,12 @@ namespace StrmAssistant
                 {
                     try
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            _logger.Info("MediaInfoExtract - Scheduled Task Cancelled");
+                            return;
+                        }
+
                         await Plugin.LibraryApi.ProbeMediaInfo(taskItem, cancellationToken).ConfigureAwait(false);
 
                         if (enableIntroSkip && Plugin.PlaySessionMonitor.IsLibraryInScope(taskItem))
@@ -68,17 +81,19 @@ namespace StrmAssistant
                     }
                     catch (Exception e)
                     {
-                        _logger.Info("MediaInfoExtract - Item failed: " + taskItem.Name + " - " + taskItem.Path);
-                        _logger.Debug(e.Message);
+                        _logger.Error("MediaInfoExtract - Item failed: " + taskItem.Name + " - " + taskItem.Path);
+                        _logger.Error(e.Message);
                         _logger.Debug(e.StackTrace);
                     }
                     finally
                     {
+                        QueueManager.SemaphoreMaster.Release();
+
                         var currentCount = Interlocked.Increment(ref current);
                         progress.Report(currentCount / total * 100);
-                        _logger.Info("MediaInfoExtract - Scheduled Task " + currentCount + "/" + total + " - " + "Task " + taskIndex + ": " +
+                        _logger.Info("MediaInfoExtract - Progress " + currentCount + "/" + total + " - " +
+                                     "Task " + taskIndex + ": " +
                                      taskItem.Path);
-                        QueueManager.SemaphoreMaster.Release();
                     }
                 }, cancellationToken);
                 tasks.Add(task);
