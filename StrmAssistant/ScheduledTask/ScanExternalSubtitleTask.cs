@@ -19,14 +19,19 @@ namespace StrmAssistant
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             _logger.Info("ExternalSubtitle - Scan Task Execute");
+            _logger.Info(
+                "Max Concurrent Count: " + Plugin.Instance.GetPluginOptions().GeneralOptions.MaxConcurrentCount);
+
             await Task.Yield();
             progress.Report(0);
 
-            var items = Plugin.SubtitleApi.FetchScanTaskItems();
+            var items = Plugin.LibraryApi.FetchPostExtractTaskItems(false);
             _logger.Info("ExternalSubtitle - Number of items: " + items.Count);
 
             double total = items.Count;
+            var index = 0;
             var current = 0;
+
             var tasks = new List<Task>();
 
             foreach (var item in items)
@@ -39,13 +44,14 @@ namespace StrmAssistant
 
                 try
                 {
-                    await QueueManager.SemaphoreMaster.WaitAsync(cancellationToken);
+                    await QueueManager.SemaphoreLocal.WaitAsync(cancellationToken);
                 }
                 catch
                 {
                     break;
                 }
 
+                var taskIndex = ++index;
                 var taskItem = item;
                 var task = Task.Run(async () =>
                 {
@@ -76,10 +82,12 @@ namespace StrmAssistant
                     }
                     finally
                     {
-                        QueueManager.SemaphoreMaster.Release();
+                        QueueManager.SemaphoreLocal.Release();
 
                         var currentCount = Interlocked.Increment(ref current);
                         progress.Report(currentCount / total * 100);
+                        _logger.Info("MediaInfoPersist - Progress " + currentCount + "/" + total + " - " +
+                                     "Task " + taskIndex + ": " + taskItem.Path);
                     }
                 }, cancellationToken);
                 tasks.Add(task);
