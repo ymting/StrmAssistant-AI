@@ -1,6 +1,7 @@
-﻿using MediaBrowser.Model.Logging;
+using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Tasks;
 using StrmAssistant.Common;
+using StrmAssistant.Properties;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -20,14 +21,19 @@ namespace StrmAssistant.ScheduledTask
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             _logger.Info("ExternalSubtitle - Scan Task Execute");
+            _logger.Info("Max Concurrent Count: " +
+                         Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.MaxConcurrentCount);
+
             await Task.Yield();
             progress.Report(0);
 
-            var items = Plugin.SubtitleApi.FetchScanTaskItems();
+            var items = Plugin.LibraryApi.FetchPostExtractTaskItems(false);
             _logger.Info("ExternalSubtitle - Number of items: " + items.Count);
 
             double total = items.Count;
+            var index = 0;
             var current = 0;
+
             var tasks = new List<Task>();
 
             foreach (var item in items)
@@ -40,13 +46,14 @@ namespace StrmAssistant.ScheduledTask
 
                 try
                 {
-                    await QueueManager.SemaphoreMaster.WaitAsync(cancellationToken);
+                    await QueueManager.SemaphoreLocal.WaitAsync(cancellationToken);
                 }
                 catch
                 {
                     break;
                 }
 
+                var taskIndex = ++index;
                 var taskItem = item;
                 var task = Task.Run(async () =>
                 {
@@ -77,10 +84,12 @@ namespace StrmAssistant.ScheduledTask
                     }
                     finally
                     {
-                        QueueManager.SemaphoreMaster.Release();
+                        QueueManager.SemaphoreLocal.Release();
 
                         var currentCount = Interlocked.Increment(ref current);
                         progress.Report(currentCount / total * 100);
+                        _logger.Info("MediaInfoPersist - Progress " + currentCount + "/" + total + " - " +
+                                     "Task " + taskIndex + ": " + taskItem.Path);
                     }
                 }, cancellationToken);
                 tasks.Add(task);
@@ -92,13 +101,19 @@ namespace StrmAssistant.ScheduledTask
             _logger.Info("ExternalSubtitle - Scan Task Complete");
         }
 
-        public string Category => Plugin.Instance.Name;
+        public string Category => Resources.ResourceManager.GetString("PluginOptions_EditorTitle_Strm_Assistant",
+            Plugin.Instance.DefaultUICulture);
 
         public string Key => "ScanExternalSubtitleTask";
 
-        public string Description => "Scans external subtitles for videos";
+        public string Description => Resources.ResourceManager.GetString(
+            "ScanExternalSubtitleTask_Description_Scans_external_subtitles_for_videos",
+            Plugin.Instance.DefaultUICulture);
 
         public string Name => "Scan External Subtitles";
+        //public string Name =>
+        //    Resources.ResourceManager.GetString("ScanExternalSubtitleTask_Name_Scan_External_Subtitles",
+        //        Plugin.Instance.DefaultUICulture);
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
