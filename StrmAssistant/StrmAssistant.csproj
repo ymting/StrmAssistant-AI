@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <AssemblyVersion>2.1.1.0</AssemblyVersion>
-    <FileVersion>2.1.1.0</FileVersion>
-    <!-- 生产正式版 2.1.1；dev 分支发版后转 2.1.2-1 继续递增 -->
-    <Version>2.1.1</Version>
+    <AssemblyVersion>2.1.2.0</AssemblyVersion>
+    <FileVersion>2.1.2.0</FileVersion>
+    <!-- 生产已发布 2.1.1；dev 从 2.1.2-1 开始递增，下一次正式发版直接取 2.1.2 -->
+    <Version>2.1.2-1</Version>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
     <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
     <AssemblyName>$(MSBuildProjectName)Lite</AssemblyName>
