@@ -2,9 +2,9 @@
 
 ![logo](StrmAssistant/Properties/thumb.png "logo")
 
-## [[English]](README.en.md)
+## [[English]](README.en.md) （上游原版说明，本分支以中文为准）
 
-> 基于社区版 2.0.0.27 的修改分支，让插件能在 Emby 4.9+ 上继续用。当前版本 **2.1.1**。
+> 基于社区版 2.0.0.27 的**个人修改分支**，由本仓库独立维护，让插件能在 Emby 4.9+ 上继续用。当前版本 **2.1.2**（tag `v2.1.2`）。
 
 ## 快速开始
 
@@ -25,6 +25,7 @@
 | 网络代理 | Emby 出站请求统一走代理，支持连通性检测 |
 | 第三方插件适配 | MovieDb 按接口匹配 provider，冲突插件检测告警 |
 | 设置页与计划任务全量中文化 | 界面文案、任务名均为中文 |
+| 隐藏合集媒体库 | 阻止 Emby 扫库时自动新建「合集」库，并从用户视图隐藏（设置页可开关） |
 
 ## 兼容性
 
@@ -118,8 +119,9 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 由扩展把连写的字母串展开成音节组合（`zhangwei` → `zhang+wei*` / `z+h+a+n+g+...` 等多路 OR）。
 所以**拼音搜索必须在「Enhance Chinese Search」开启并完成索引重建后才生效**，开关关着走官方 `unicode61`，没有拼音。
 
-> 已验证 Emby 4.9.1.90 的 `fts_search9` 表与四个 patch 方法都在，但**尚未在真机跑过索引重建**
-> （完整版作者只验证到 4.9.0.48）。开启前请先备份 `data/library.db`。
+> 已在 Emby **4.10.1.0** 真机完成索引重建与拼音搜索验收：`xianni` 命中「仙逆」73 条、
+> `zhizhuxia` 命中「蜘蛛侠」；4.9.1.90 的 `fts_search9` 表与补丁入口也已核对。
+> 开启前仍建议先备份 `data/library.db`。
 
 ### 插件更新屏蔽
 
@@ -158,13 +160,18 @@ Emby 的「检查插件更新」计划任务与插件管理页的更新列表走
 15. 支持`TMDB`剧集组刮削
 16. 阻止指定插件自动在线更新
 
-## 安装与使用说明请查看 [Wiki](https://github.com/sjtuross/StrmAssistant/wiki)
+## 安装与使用说明
 
-## 赞赏
+本页「快速开始」与各功能章节即为本分支的说明；上游 [Wiki](https://github.com/sjtuross/StrmAssistant/wiki) 对应的是原版功能，部分内容对本分支不适用，仅供对照。
 
-如果这个项目对你有帮助，不妨请我喝杯咖啡。如果你欣赏这个项目，欢迎为它点亮一颗⭐️。感谢你对开源精神的认可与支持！
+## 关于本仓库
 
-![donate](donate.png "donate")
+这是基于社区版 2.0.0.27 的**个人修改分支**，由本仓库独立维护，与上游社区版作者、Emby LLC 均无关联。
+本分支**不接受赞赏或赞助**，也不提供收费服务；如果对你有帮助，点个 ⭐️ 就够了。
+
+- 问题反馈与功能建议请到本仓库 [Issues](https://github.com/ymting/StrmAssistant-AI/issues)，不要提到上游仓库
+- 说明以本页（中文 README）为准；[English](README.en.md) 是上游原版说明，部分内容已过时，仅供参考
+- 编译产物只在本仓库 [Releases](https://github.com/ymting/StrmAssistant-AI/releases) 发布，下载文件名固定为 `StrmAssistantLite.dll`
 
 ## 声明
 
@@ -192,6 +199,3 @@ Emby 的「检查插件更新」计划任务与插件管理页的更新列表走
 1. 本项目开发者不对因使用本项目而可能导致的任何直接或间接后果（包括但不限于数据丢失、软件故障或法律纠纷）负责。
 2. 如果认为本项目可能侵犯相关方的合法权益，请与开发者取得联系。
 
-### 星星数
-
-[![Star History Chart](https://api.star-history.com/svg?repos=sjtuross/strmassistant&type=Date)](https://www.star-history.com/#sjtuross/strmassistant&Date)

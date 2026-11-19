@@ -1,5 +1,7 @@
 # Strm Assistant
 
+> Note: this is the upstream (original) README kept for reference. For the maintained fork in this repository - features, Emby 4.9+ support and downloads - see [README.md](README.md).
+
 ![logo](StrmAssistant/Properties/thumb.png "logo")
 
 ## Purpose
