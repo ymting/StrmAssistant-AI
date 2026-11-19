@@ -554,6 +554,9 @@
   <data name="MergeScopeOption_GlobalScope_GlobalScope" xml:space="preserve">
     <value>跨媒體庫合併</value>
   </data>
+  <data name="MergeMultiVersionTask_Name_Merge_Multi_Versions" xml:space="preserve">
+    <value>合併多版本</value>
+  </data>
   <data name="MergeMovieTask_Description_Merge_movies_per_library_or_across_libraries_per_preference" xml:space="preserve">
     <value>按偏好庫內或跨庫合併電影電視節目，掃庫後自動執行</value>
   </data>
@@ -578,8 +581,14 @@
   <data name="ExperienceEnhanceOptions_MergeSeriesPreferences_Series_Merge_Preference" xml:space="preserve">
     <value>電視節目合併偏好</value>
   </data>
+  <data name="ExtractVideoThumbnailTask_Name_Extract_Video_Thumbnail" xml:space="preserve">
+    <value>提取影片縮圖</value>
+  </data>
   <data name="ExtractVideoThumbnailTask_Description_Extract_video_thumbnail_preview" xml:space="preserve">
     <value>提取影片預覽縮圖和章節圖</value>
+  </data>
+  <data name="EpisodeRefreshTask_Name_Refresh_Episode" xml:space="preserve">
+    <value>刷新劇集</value>
   </data>
   <data name="EpisodeRefreshTask_Description_Refresh_metadata_for_episodes_missing_overview" xml:space="preserve">
     <value>按偏好刷新劇集缺失的元資料和圖片</value>
@@ -616,6 +625,9 @@
   </data>
   <data name="Notification_DeepDelete_EventDescription" xml:space="preserve">
     <value>Item Name:\n{0}\n\nItem Path:\n{1}\n\nMount Paths:\n{2}</value>
+  </data>
+  <data name="DeletePersonTask_Name_Delete_Persons" xml:space="preserve">
+    <value>刪除演職人員</value>
   </data>
   <data name="DeletePersonTask_Description_Deletes_all_persons" xml:space="preserve">
     <value>清除所有人員數據</value>

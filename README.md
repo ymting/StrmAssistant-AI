@@ -40,11 +40,11 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 
 ### 第三方插件适配
 
-插件设置页顶部新增 **Third-party Plugins** 区块，列出已检测到的相关插件及其版本。
+插件设置页顶部新增 **第三方插件** 区块，列出已检测到的相关插件及其版本。
 
 | 插件 | 与本插件的关系 | 处理方式 |
 | --- | --- | --- |
-| **MovieDb** | 「演职人员增强」通过它的 Person provider 取数据 | 由原先「精确匹配类名 `MovieDbPersonProvider`」改为 **按接口 + 类名/程序集名/显示名三重匹配**，MovieDb 升级改名也不会静默失效；设置页直接显示 `Person provider matched / NOT matched` |
+| **MovieDb** | 「演职人员增强」通过它的 Person provider 取数据 | 由原先「精确匹配类名 `MovieDbPersonProvider`」改为 **按接口 + 类名/程序集名/显示名三重匹配**，MovieDb 升级改名也不会静默失效；设置页直接显示「演职人员接口已匹配 / 未匹配」 |
 | **InfuseSync** | 存在已知线程安全冲突 | 检测到即标黄告警，不做魔改 |
 | **StrmExtract** | 功能重叠，不能共存 | 检测到即标黄告警 |
 | **OMDb / OpenSubtitles** | 无代码依赖 | 仅显示版本，供排查评分/字幕来源 |
@@ -55,7 +55,7 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 
 ### 网络代理
 
-设置页新增 **Network** 区块（移植自完整社区版的 `NetworkOptions`）：
+设置页新增 **网络** 区块（移植自完整社区版的 `NetworkOptions`）：
 
 | 项 | 说明 |
 | --- | --- |
@@ -72,7 +72,7 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 
 ### 中文搜索增强
 
-设置页新增 **Chinese Search** 区块（移植自完整社区版 `EnhanceChineseSearch`）：
+设置页新增 **中文搜索** 区块（移植自完整社区版 `EnhanceChineseSearch`）：
 
 | 项 | 说明 |
 | --- | --- |
@@ -110,13 +110,13 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 
 ### 插件更新屏蔽
 
-设置页 **Experience Enhance** 区块新增 **Suppress Plugin Auto Online Updates**
+设置页 **体验增强** 区块新增 **阻止插件自动在线更新**
 （移植自完整社区版 `SuppressPluginUpdate`）：
 
 | 项 | 说明 |
 | --- | --- |
-| Suppress Plugin Auto Online Updates | 插件名或 dll 文件名，逗号或分号分隔，例如 `MovieDb,Tvdb`；默认为空（不屏蔽） |
-| Suppress Plugin Updates | 保存后直接显示命中情况：命中的插件（带版本）与**没有匹配上的条目**——写错名字会立刻标黄 |
+| 阻止插件自动在线更新 | 插件名或 dll 文件名，逗号或分号分隔，例如 `MovieDb,Tvdb`；默认为空（不屏蔽） |
+| 插件更新屏蔽状态 | 保存后直接显示命中情况：命中的插件（带版本）与**没有匹配上的条目**——写错名字会立刻标黄 |
 
 实现方式：给 `InstallationManager.GetAvailablePluginUpdates` 挂 Harmony Postfix，把命中的包从「可更新列表」里摘掉。
 Emby 的「检查插件更新」计划任务与插件管理页的更新列表走的都是这个方法，因此两处同时生效。

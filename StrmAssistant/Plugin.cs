@@ -350,7 +350,7 @@ namespace StrmAssistant
 
         public ImageFormat ThumbImageFormat => ImageFormat.Png;
 
-        public override string Description => "Extract MediaInfo and Enable IntroSkip";
+        public override string Description => "提取媒体信息并启用片头片尾跳过";
 
         public override Guid Id => _id;
 
@@ -652,14 +652,14 @@ namespace StrmAssistant
                 var conflict = pluginInfo.IsLoaded && pluginInfo.IsWarning;
                 var primaryText = pluginInfo.IsLoaded
                     ? $"{pluginInfo.Name} {pluginInfo.Version}"
-                    : $"{pluginInfo.Name} - Not detected";
+                    : $"{pluginInfo.Name} - 未检测到";
 
                 // MovieDb 是本插件唯一有代码依赖的第三方插件，把「演职人员增强是否接上」直接显示出来，
                 // 这样它升级后如果 provider 改到匹配不到，设置页一眼可见，不必翻日志
                 if (pluginInfo.IsLoaded && pluginInfo.Name == "MovieDb")
                 {
                     var resolved = ThirdPartyPluginApi.ResolveMovieDbPersonProvider() != null;
-                    primaryText += resolved ? " · Person provider matched" : " · Person provider NOT matched";
+                    primaryText += resolved ? " · 演职人员接口已匹配" : " · 演职人员接口未匹配";
                     conflict = !resolved;
                 }
 
@@ -685,7 +685,7 @@ namespace StrmAssistant
             {
                 experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
                 {
-                    PrimaryText = "No plugin is suppressed",
+                    PrimaryText = "未设置需要屏蔽更新的插件",
                     Icon = IconNames.info,
                     IconMode = ItemListIconMode.SmallRegular
                 });
@@ -696,7 +696,7 @@ namespace StrmAssistant
                 {
                     experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
                     {
-                        PrimaryText = $"No auto update: {text}",
+                        PrimaryText = $"已阻止自动更新：{text}",
                         Icon = IconNames.info,
                         IconMode = ItemListIconMode.SmallRegular
                     });
@@ -706,8 +706,8 @@ namespace StrmAssistant
                 {
                     experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
                     {
-                        PrimaryText = $"Not matched: {text}",
-                        SecondaryText = "Check the plugin name or dll filename.",
+                        PrimaryText = $"未匹配到插件：{text}",
+                        SecondaryText = "请检查插件名或 dll 文件名是否正确。",
                         Icon = IconNames.warning,
                         IconMode = ItemListIconMode.SmallRegular,
                         Status = ItemStatus.Warning
@@ -905,7 +905,7 @@ namespace StrmAssistant
             {
                 networkOptions.ProxyServerStatus.Status = ItemStatus.Unavailable;
                 networkOptions.ProxyServerStatus.Caption = Resources.ProxyServer_Unavailable;
-                networkOptions.ProxyServerStatus.StatusText = "N/A";
+                networkOptions.ProxyServerStatus.StatusText = "不可用";
                 return;
             }
 
@@ -922,7 +922,7 @@ namespace StrmAssistant
             {
                 networkOptions.ProxyServerStatus.Status = ItemStatus.Unavailable;
                 networkOptions.ProxyServerStatus.Caption = Resources.ProxyServer_Unavailable;
-                networkOptions.ProxyServerStatus.StatusText = "N/A";
+                networkOptions.ProxyServerStatus.StatusText = "不可用";
             }
         }
 

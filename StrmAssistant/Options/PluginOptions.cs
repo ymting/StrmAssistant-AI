@@ -26,7 +26,7 @@ namespace StrmAssistant.Options
         [VisibleCondition(nameof(IsModSuccess), SimpleCondition.IsFalse)]
         public StatusItem ModStatus { get; set; } = new StatusItem();
 
-        [DisplayName("Third-party Plugins")]
+        [DisplayName("第三方插件")]
         public GenericItemList ThirdPartyPluginStatus { get; set; } = new GenericItemList();
 
         [DisplayNameL("GeneralOptions_EditorTitle_General_Options", typeof(Resources))]
@@ -38,10 +38,10 @@ namespace StrmAssistant.Options
         [DisplayNameL("PluginOptions_MetadataEnhanceOptions_Metadata_Enhance", typeof(Resources))]
         public MetadataEnhanceOptions MetadataEnhanceOptions { get; set; } = new MetadataEnhanceOptions();
 
-        [DisplayName("Network")]
+        [DisplayName("网络")]
         public NetworkOptions NetworkOptions { get; set; } = new NetworkOptions();
 
-        [DisplayName("Chinese Search")]
+        [DisplayName("中文搜索")]
         public SearchEnhanceOptions SearchEnhanceOptions { get; set; } = new SearchEnhanceOptions();
 
         [DisplayNameL("PluginOptions_IntroSkipOptions_Intro_Credits_Detection", typeof(Resources))]

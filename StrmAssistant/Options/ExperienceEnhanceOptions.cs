@@ -52,7 +52,7 @@ namespace StrmAssistant.Options
         public string SuppressPluginUpdates { get; set; } = string.Empty;
 
         /// <summary>设置页展示用：命中哪些已装插件、哪些条目压根没匹配上（多半是拼错了）。</summary>
-        [DisplayName("Suppress Plugin Updates")]
+        [DisplayName("插件更新屏蔽状态")]
         public GenericItemList SuppressPluginUpdateStatus { get; set; } = new GenericItemList();
     }
 }

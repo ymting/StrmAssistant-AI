@@ -554,6 +554,9 @@
   <data name="MergeScopeOption_GlobalScope_GlobalScope" xml:space="preserve">
     <value>跨媒体库合并</value>
   </data>
+  <data name="MergeMultiVersionTask_Name_Merge_Multi_Versions" xml:space="preserve">
+    <value>合并多版本</value>
+  </data>
   <data name="MergeMovieTask_Description_Merge_movies_per_library_or_across_libraries_per_preference" xml:space="preserve">
     <value>按偏好库内或跨库合并电影和电视节目，扫库后自动运行</value>
   </data>
@@ -578,8 +581,14 @@
   <data name="ExperienceEnhanceOptions_MergeSeriesPreferences_Series_Merge_Preference" xml:space="preserve">
     <value>电视节目合并偏好</value>
   </data>
+  <data name="ExtractVideoThumbnailTask_Name_Extract_Video_Thumbnail" xml:space="preserve">
+    <value>提取视频缩略图</value>
+  </data>
   <data name="ExtractVideoThumbnailTask_Description_Extract_video_thumbnail_preview" xml:space="preserve">
     <value>提取视频预览缩略图和章节图</value>
+  </data>
+  <data name="EpisodeRefreshTask_Name_Refresh_Episode" xml:space="preserve">
+    <value>刷新剧集</value>
   </data>
   <data name="EpisodeRefreshTask_Description_Refresh_metadata_for_episodes_missing_overview" xml:space="preserve">
     <value>按偏好刷新剧集缺失的元数据和图片</value>
@@ -616,6 +625,9 @@
   </data>
   <data name="Notification_DeepDelete_EventDescription" xml:space="preserve">
     <value>Item Name:\n{0}\n\nItem Path:\n{1}\n\nMount Paths:\n{2}</value>
+  </data>
+  <data name="DeletePersonTask_Name_Delete_Persons" xml:space="preserve">
+    <value>删除演职人员</value>
   </data>
   <data name="DeletePersonTask_Description_Deletes_all_persons" xml:space="preserve">
     <value>清除所有人员数据</value>
