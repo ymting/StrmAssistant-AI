@@ -6,11 +6,13 @@ on:
       - tab-ui
       - simple-ui
       - lite
+      - dev
   pull_request:
     branches:
       - tab-ui
       - simple-ui
       - lite
+      - dev
 
 jobs:
   build:
@@ -23,7 +25,8 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.x'
+          # ILRepack 2.0.42 是 .NET 8 程序，Harmony 2.3.3 也需要较新 SDK，6.x 构建会失败
+          dotnet-version: '8.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -34,5 +37,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: StrmAssistant
-          path: C:\Users\runneradmin\AppData\Roaming\Emby-Server\programdata\plugins\StrmAssistant${{ github.ref_name == 'lite' && 'Lite' || '' }}.dll
+          name: StrmAssistant-${{ github.ref_name }}
+          # 本仓库 csproj 固定 AssemblyName=$(MSBuildProjectName)Lite，lite 与 dev 分支产物都是 StrmAssistantLite.dll
+          path: C:\Users\runneradmin\AppData\Roaming\Emby-Server\programdata\plugins\StrmAssistant${{ (github.ref_name == 'lite' || github.ref_name == 'dev') && 'Lite' || '' }}.dll

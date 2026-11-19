@@ -128,12 +128,14 @@ namespace StrmAssistant.Mod
         {
             // 构造实例即完成 PatchTracker 注册；Apply() 按当前选项决定 patch 还是 unpatch
             EnableProxyServer.Instance?.Apply();
+            SuppressPluginUpdate.Instance?.Apply();
         }
 
         internal static void InitializeMods()
         {
             _ = EnableProxyServer.Instance;
             _ = EnhanceChineseSearch.Instance;
+            _ = SuppressPluginUpdate.Instance;
         }
 
         internal static bool IsModSuccess()

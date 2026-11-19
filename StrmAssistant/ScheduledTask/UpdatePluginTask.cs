@@ -78,6 +78,15 @@ namespace StrmAssistant.ScheduledTask
             await Task.Yield();
             progress.Report(0);
 
+            // 「阻止插件自动更新」名单里如果写了本插件，这里也要遵守，
+            // 否则用户屏蔽了自己却没效果，还会被覆盖成远端版本
+            if (Mod.SuppressPluginUpdate.IsSelfSuppressed())
+            {
+                _logger.Info("Plugin is listed in SuppressPluginUpdates, skip update check");
+                progress.Report(100);
+                return;
+            }
+
             try
             {
                 var githubToken= Plugin.Instance.GetPluginOptions().AboutOptions.GitHubToken;

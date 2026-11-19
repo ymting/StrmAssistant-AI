@@ -94,6 +94,24 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 > 已验证 Emby 4.9.1.90 的 `fts_search9` 表与四个 patch 方法都在，但**尚未在真机跑过索引重建**
 > （完整版作者只验证到 4.9.0.48）。开启前请先备份 `data/library.db`。
 
+### 插件更新屏蔽
+
+设置页 **Experience Enhance** 区块新增 **Suppress Plugin Auto Online Updates**
+（移植自完整社区版 `SuppressPluginUpdate`）：
+
+| 项 | 说明 |
+| --- | --- |
+| Suppress Plugin Auto Online Updates | 插件名或 dll 文件名，逗号或分号分隔，例如 `MovieDb,Tvdb`；默认为空（不屏蔽） |
+| Suppress Plugin Updates | 保存后直接显示命中情况：命中的插件（带版本）与**没有匹配上的条目**——写错名字会立刻标黄 |
+
+实现方式：给 `InstallationManager.GetAvailablePluginUpdates` 挂 Harmony Postfix，把命中的包从「可更新列表」里摘掉。
+Emby 的「检查插件更新」计划任务与插件管理页的更新列表走的都是这个方法，因此两处同时生效。
+
+- 只拦**在线更新候选**：手动上传 dll、手动在插件页点某个插件的「更新」都不受影响
+- **不拦 Emby 服务端自身更新**（走 `GetAvailablePackages`，与本补丁无关）
+- 名字匹配不区分大小写，`MovieDb`、`MovieDb.dll`、插件 GUID 三种写法都认
+- 名单里写了本插件（`StrmAssistantLite`）时，「Update Plugin」计划任务同样会跳过
+
 ## 用途
 
 1. 提高首次播放的起播速度
@@ -111,6 +129,7 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 13. 媒体信息持久化
 14. 支持代理服务器
 15. 支持`TMDB`剧集组刮削
+16. 阻止指定插件自动在线更新
 
 ## 安装与使用说明请查看 [Wiki](https://github.com/sjtuross/StrmAssistant/wiki)
 

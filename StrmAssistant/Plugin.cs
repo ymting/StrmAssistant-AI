@@ -575,6 +575,10 @@ namespace StrmAssistant
                 Logger.Info("MergeMultiVersion is set to {0}", options.ExperienceEnhanceOptions.MergeMultiVersion);
                 Logger.Info("MergeMoviesPreference is set to {0}",
                     EnumExtensions.GetDescription(options.ExperienceEnhanceOptions.MergeMoviesPreference));
+
+                var suppressPluginUpdates = options.ExperienceEnhanceOptions.SuppressPluginUpdates;
+                Logger.Info("SuppressPluginUpdates is set to {0}",
+                    string.IsNullOrWhiteSpace(suppressPluginUpdates) ? "EMPTY" : suppressPluginUpdates);
             }
             _currentMergeMultiVersion = options.ExperienceEnhanceOptions.MergeMultiVersion;
 
@@ -591,6 +595,9 @@ namespace StrmAssistant
             }
 
             EnableProxyServer.Instance?.Apply();
+
+            // 插件更新屏蔽同样是即时生效的：改完名单保存就重挂 / 摘掉补丁
+            SuppressPluginUpdate.Instance?.Apply();
 
             // 中文搜索：从开变关时不能直接停，必须标记「下次启动恢复官方 tokenizer 并重建索引」，
             // 否则 fts_search9 会指向一个已不存在的 simple 分词器，搜索直接失效
@@ -664,6 +671,48 @@ namespace StrmAssistant
                     IconMode = ItemListIconMode.SmallRegular,
                     Status = conflict ? ItemStatus.Warning : ItemStatus.None
                 });
+            }
+
+            // 插件更新屏蔽：把「填的名字到底有没有对上」摆在设置页上。
+            // 写错名字保存也是成功的，不这样显示用户会以为已经在生效。
+            var experienceOptions = options.ExperienceEnhanceOptions;
+            experienceOptions.SuppressPluginUpdateStatus.Clear();
+
+            SuppressPluginUpdate.DescribeMatches(experienceOptions.SuppressPluginUpdates,
+                out var suppressedMatched, out var suppressedUnmatched);
+
+            if (suppressedMatched.Count == 0 && suppressedUnmatched.Count == 0)
+            {
+                experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
+                {
+                    PrimaryText = "No plugin is suppressed",
+                    Icon = IconNames.info,
+                    IconMode = ItemListIconMode.SmallRegular
+                });
+            }
+            else
+            {
+                foreach (var text in suppressedMatched)
+                {
+                    experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
+                    {
+                        PrimaryText = $"No auto update: {text}",
+                        Icon = IconNames.info,
+                        IconMode = ItemListIconMode.SmallRegular
+                    });
+                }
+
+                foreach (var text in suppressedUnmatched)
+                {
+                    experienceOptions.SuppressPluginUpdateStatus.Add(new GenericListItem
+                    {
+                        PrimaryText = $"Not matched: {text}",
+                        SecondaryText = "Check the plugin name or dll filename.",
+                        Icon = IconNames.warning,
+                        IconMode = ItemListIconMode.SmallRegular,
+                        Status = ItemStatus.Warning
+                    });
+                }
             }
 
             var libraries = _libraryManager.GetVirtualFolders();
