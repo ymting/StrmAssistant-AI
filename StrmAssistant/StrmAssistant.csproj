@@ -36,10 +36,6 @@
       <HintPath>..\lib\refs\SQLitePCLRawEx.core.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Emby.Server.Implementations">
-      <HintPath>..\lib\refs\Emby.Server.Implementations.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CHTCHSConv" Version="1.0.0">

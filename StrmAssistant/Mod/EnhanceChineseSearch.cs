@@ -1,4 +1,3 @@
-using Emby.Server.Implementations.Data;
 using Emby.Sqlite;
 using HarmonyLib;
 using MediaBrowser.Controller.Entities;
@@ -241,9 +240,11 @@ namespace StrmAssistant.Mod
                 $"CREATE VIRTUAL TABLE IF NOT EXISTS {FtsTableName} USING FTS5 (Name, OriginalTitle, SeriesName, Album, " +
                 $"tokenize=\"{tokenizerName}\"{prefixSql})";
 
-            // 4.9 起 Album 列需要回查 MediaItems 取专辑名，不再是直接的 Album 字段
+            // 4.9 起 Album 列要回查 MediaItems 取专辑名。必须用别名 A 限定外层 AlbumId，
+            // 否则子查询里的 AlbumId 会解析到内层 MediaItems 自己的列，算出来是错的
+            // （Emby 自身 GetAlbumForFts 就是这么写的）
             var albumColumn = Utility.AppVer >= Utility.Ver4900
-                ? "(select case when AlbumId is null then null else (select name from MediaItems where Id = AlbumId limit 1) end)"
+                ? "(select case when A.AlbumId is null then null else (select Name from MediaItems where Id = A.AlbumId limit 1) end)"
                 : "Album";
 
             var fillSql =
@@ -251,7 +252,7 @@ namespace StrmAssistant.Mod
                 $"{GetSearchColumnNormalization("Name")}, " +
                 $"{GetSearchColumnNormalization("OriginalTitle")}, " +
                 $"{GetSearchColumnNormalization("SeriesName")}, " +
-                $"{GetSearchColumnNormalization(albumColumn)} from MediaItems";
+                $"{GetSearchColumnNormalization(albumColumn)} from MediaItems A";
 
             DatabaseConnection.BeginTransaction(connection, (TransactionMode)1);
 
@@ -497,7 +498,7 @@ namespace StrmAssistant.Mod
         }
 
         [HarmonyPostfix]
-        private static void CreateConnectionPostfix(BaseSqliteRepository __instance, bool isReadOnly,
+        private static void CreateConnectionPostfix(object __instance, bool isReadOnly,
             IDatabaseConnection __result)
         {
             if (isReadOnly || _patchPhase2Initialized) return;
