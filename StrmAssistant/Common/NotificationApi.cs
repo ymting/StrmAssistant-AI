@@ -68,10 +68,44 @@ namespace StrmAssistant.Common
                 Description =
                     string.Format(
                         Resources.Notification_DeepDelete_EventDescription.Replace("\\n", Environment.NewLine),
-                        item.Name, item.Path, mountPathList)
+                        item?.Name ?? string.Empty, item?.Path ?? string.Empty, mountPathList)
             };
 
             _notificationManager.SendNotification(request);
+        }
+
+        /// <summary>
+        /// 深度删除完成后广播给所有管理员。
+        /// 完整社区版是发给「发起删除的那一个用户」（由增强通知系统用 AsyncLocal 传递），
+        /// Lite 没有那套请求级用户上下文，这里退化为管理员广播，两个删除入口共用。
+        /// </summary>
+        public void DeepDeleteSendNotificationToAdmins(BaseItem item, HashSet<string> mountPaths)
+        {
+            if (item is null) return;
+
+            try
+            {
+                // FetchUsers 写入时也会 lock 同一个对象，这里先取快照再逐个发，
+                // 避免后台线程枚举期间集合被修改（InvalidOperationException）
+                var allUsers = LibraryApi.AllUsers;
+                if (allUsers is null) return;
+
+                User[] admins;
+                lock (allUsers)
+                {
+                    admins = allUsers.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToArray();
+                }
+
+                foreach (var admin in admins)
+                {
+                    DeepDeleteSendNotification(item, admin, mountPaths);
+                }
+            }
+            catch (Exception e)
+            {
+                // 通知失败不能影响删除结果
+                _logger.Warn($"DeepDelete - Notify admins failed: {e.Message}");
+            }
         }
 
         public async Task IntroUpdateSendNotification(Episode episode, SessionInfo session, string introStartTime,

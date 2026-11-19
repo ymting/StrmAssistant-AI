@@ -42,6 +42,18 @@ namespace StrmAssistant.Options
         public MergeSeriesScopeOption MergeSeriesPreference => MergeSeriesScopeOption.LibraryScope;
 
         /// <summary>
+        /// 深度删除：删除媒体项时，顺着 STRM / 软链接找到挂载在别处的真实文件，
+        /// 连同字幕、nfo 等关联文件和清空后的空目录一起级联删除（移植自完整社区版）。
+        /// 会真实删除磁盘文件，风险高，默认关闭。
+        /// </summary>
+        [DisplayNameL("ExperienceEnhanceOptions_EnableDeepDelete_Enable_Deep_Delete", typeof(Resources))]
+        [DescriptionL(
+            "ExperienceEnhanceOptions_EnableDeepDelete_Attempt_to_cascade_delete_the_underlying_file_of_strm_or_symlink__Default_is_OFF_",
+            typeof(Resources))]
+        [Required]
+        public bool EnableDeepDelete { get; set; } = false;
+
+        /// <summary>
         /// 阻止指定插件被在线自动更新。填插件名（MovieDb）或 dll 文件名（MovieDb.dll），
         /// 逗号 / 分号分隔。移植自完整社区版，只拦 Emby 的「检查插件更新」列表，手动安装不受影响。
         /// </summary>

@@ -4,8 +4,10 @@ using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
@@ -145,9 +147,13 @@ namespace StrmAssistant.Common
             };
             var allUsers = _userManager.GetUserList(userQuery);
 
-            foreach (var user in allUsers)
+            // 通知等后台任务也会枚举 AllUsers，写入时加锁避免并发修改
+            lock (AllUsers)
             {
-                AllUsers[user] = _userManager.GetUserById(user.InternalId).Policy.IsAdministrator;
+                foreach (var user in allUsers)
+                {
+                    AllUsers[user] = _userManager.GetUserById(user.InternalId).Policy.IsAdministrator;
+                }
             }
 
             FetchAdminOrderedViews();
@@ -898,29 +904,38 @@ namespace StrmAssistant.Common
             }
         }
 
+        /// <summary>
+        /// 找出与媒体主文件同名的关联文件（字幕、nfo、图片等）。
+        /// 必须用「同名 + 分隔符」精确匹配：裸 StartsWith(basename) 会把
+        /// 「Movie2.srt」「Another Movie.nfo」这类属于别的媒体的文件一起删掉。
+        /// </summary>
         private FileSystemMetadata[] GetRelatedPaths(string basename, string folder)
         {
+            if (string.IsNullOrEmpty(basename) || string.IsNullOrEmpty(folder))
+                return Array.Empty<FileSystemMetadata>();
+
             var extensions = new List<string>
             {
-                ".nfo",
-                ".xml",
-                ".srt",
-                ".vtt",
-                ".sub",
-                ".idx",
-                ".txt",
-                ".edl",
-                ".bif",
-                ".smi",
-                ".ttml",
-                ".ass",
-                ".json"
+                ".nfo", ".xml", ".srt", ".vtt", ".sub", ".idx", ".txt", ".edl",
+                ".bif", ".smi", ".ttml", ".ass", ".json"
             };
 
             extensions.AddRange(BaseItem.SupportedImageExtensions);
             return _fileSystem.GetFiles(folder, extensions.ToArray(), false, false)
-                .Where(i => !string.IsNullOrEmpty(i.FullName) && Path.GetFileNameWithoutExtension(i.FullName)
-                    .StartsWith(basename, StringComparison.OrdinalIgnoreCase))
+                .Where(i =>
+                {
+                    if (string.IsNullOrEmpty(i.FullName)) return false;
+
+                    var name = Path.GetFileNameWithoutExtension(i.FullName);
+                    if (string.IsNullOrEmpty(name)) return false;
+
+                    // 允许：完全相同 / basename.ext / basename-xxx / basename xxx / basename_xxx
+                    return string.Equals(name, basename, StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith(basename + ".", StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith(basename + "-", StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith(basename + " ", StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith(basename + "_", StringComparison.OrdinalIgnoreCase);
+                })
                 .ToArray();
         }
 
@@ -933,6 +948,234 @@ namespace StrmAssistant.Common
             return new[] { new FileSystemMetadata { FullName = item.Path, IsDirectory = item.IsFolder } }
                 .Concat(relatedFiles)
                 .ToArray();
+        }
+
+        /// <summary>
+        /// 把一个「挂载目标文件」展开成待删清单：主文件 + 同名关联文件，只保留实际存在的项。
+        /// 传入的是 STRM / 软链解析出来的真实路径，不是 Emby 库里的 .strm 文件本身。
+        /// </summary>
+        public FileSystemMetadata[] GetRemoteDeletePaths(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return Array.Empty<FileSystemMetadata>();
+
+            var folder = _fileSystem.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(folder) || !_fileSystem.DirectoryExists(folder))
+                return Array.Empty<FileSystemMetadata>();
+
+            var basename = Path.GetFileNameWithoutExtension(path);
+            var related = GetRelatedPaths(basename, folder);
+
+            return new[] { _fileSystem.GetFileInfo(path) }
+                .Concat(related)
+                .Where(f => f != null && f.Exists)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 删除前先解析出「Emby 自己删不到、需要级联删除」的挂载目标路径。
+        /// 返回字典：key = 真实目标路径；value 含义：
+        ///   true  —— 本地文件（file:// 或本地绝对路径），需要深度删除；
+        ///   false —— http(s) 等远程资源，只记录、不落盘删除；
+        ///   null  —— 普通媒体文件，Emby 的 DeleteFileLocation 会自己删，这里不重复删。
+        /// scope 为 null 时覆盖全部媒体源；不为 null 时只处理落在本次删除路径范围内的源。
+        /// </summary>
+        public Dictionary<string, bool?> PrepareDeepDelete(BaseItem item, string[] scope)
+        {
+            var mountPaths = new Dictionary<string, bool?>(StringComparer.Ordinal);
+            if (item == null) return mountPaths;
+
+            // 文件夹（剧集 / 合集 / 播放列表）要把它下面所有子项都算进来，否则只删了文件夹本身
+            var items = new List<BaseItem> { item };
+            if (item is Folder folderItem)
+            {
+                items.AddRange(folderItem.GetItemList(new InternalItemsQuery
+                {
+                    Recursive = true,
+                    ForceOriginalFolders = item is Playlist || item is BoxSet
+                }));
+            }
+
+            var single = scope == null;
+            foreach (var current in items.Where(i => i is IHasMediaSources))
+            {
+                // 两段解析分开兜底：GetStaticMediaSources 是反射调用，失败时降级为空字典，
+                // 软链 / 普通文件分支仍然可以继续处理，不至于整条目录都不删。
+                List<MediaSourceInfo> sources;
+                try
+                {
+                    sources = current.GetMediaSources(!single, false,
+                            _libraryManager.GetLibraryOptions(current))
+                        .Where(s => single || (scope != null && !string.IsNullOrEmpty(s?.Path) &&
+                            scope.Any(p => s.Path.StartsWith(p, StringComparison.OrdinalIgnoreCase))))
+                        .ToList();
+                }
+                catch (Exception e)
+                {
+                    // 单个条目取媒体源失败不能让整个删除动作崩掉，跳过它继续处理其它条目
+                    _logger.Warn($"DeepDelete - GetMediaSources failed for {current.Name}: {e.Message}");
+                    continue;
+                }
+
+                // GetStaticMediaSources 给出的是 STRM 内容解析后的目标路径，按 Id 与上面的媒体源对齐
+                var staticPaths = new Dictionary<string, string>();
+                try
+                {
+                    staticPaths = (Plugin.MediaInfoApi.GetStaticMediaSources(current, !single) ??
+                                   new List<MediaSourceInfo>())
+                        .Where(s => !string.IsNullOrEmpty(s?.Id))
+                        .GroupBy(s => s.Id)
+                        .ToDictionary(g => g.Key, g => g.First().Path);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn($"DeepDelete - GetStaticMediaSources failed for {current.Name}: {e.Message}");
+                }
+
+                foreach (var source in sources)
+                {
+                    if (source == null || string.IsNullOrEmpty(source.Path)) continue;
+
+                    if (IsFileShortcut(source.Path))
+                    {
+                        // .strm 本身由 Emby 删除，这里要顺着它指向的目标继续删；
+                        // source.Id 为空时不能拿去查字典（null key 会抛异常），直接跳过
+                        if (string.IsNullOrEmpty(source.Id) ||
+                            !staticPaths.TryGetValue(source.Id, out var target) ||
+                            string.IsNullOrEmpty(target) || IsFileShortcut(target)) continue;
+
+                        if (Path.IsPathRooted(target))
+                        {
+                            // 挂载目标常见形态就是本地绝对路径（Windows D:\ / Unix /mnt/...）。
+                            // 优先直接用原字符串：走 Uri.LocalPath 会把路径里的 %xx / # 当作
+                            // URL 编码解码，对含这些字符的真实文件名会改错路径。
+                            AddMountPath(mountPaths, target, true);
+                        }
+                        else if (Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.IsAbsoluteUri)
+                        {
+                            // file:// 转成文件系统路径后按本地文件删；http(s) 等远程资源只记录、不落盘删除
+                            if (uri.Scheme == Uri.UriSchemeFile)
+                                AddMountPath(mountPaths, uri.LocalPath, true);
+                            else
+                                AddMountPath(mountPaths, target, false);
+                        }
+                    }
+                    else if (CommonUtility.IsSymlink(source.Path))
+                    {
+                        var symlinkTarget = CommonUtility.GetSymlinkTarget(source.Path);
+                        if (string.IsNullOrEmpty(symlinkTarget)) continue;
+
+                        // LinkTarget 可能是相对路径，按软链所在目录补全
+                        if (!Path.IsPathRooted(symlinkTarget))
+                        {
+                            var linkFolder = _fileSystem.GetDirectoryName(source.Path);
+                            if (string.IsNullOrEmpty(linkFolder)) continue;
+                            try
+                            {
+                                // 归一化 .. / .，避免软链目标逃逸到预期目录之外
+                                symlinkTarget = Path.GetFullPath(Path.Combine(linkFolder, symlinkTarget));
+                            }
+                            catch
+                            {
+                                continue;
+                            }
+                        }
+                        AddMountPath(mountPaths, symlinkTarget, true);
+                    }
+                    else
+                    {
+                        // 普通本地文件：Emby 的 DeleteFileLocation 已经会删，登记但不重复删
+                        AddMountPath(mountPaths, source.Path, null);
+                    }
+                }
+            }
+
+            return mountPaths;
+        }
+
+        /// <summary>单参数重载：不限制范围，覆盖该条目的全部媒体源（用于插件自己的「删除版本」入口）。</summary>
+        public Dictionary<string, bool?> PrepareDeepDelete(BaseItem item) => PrepareDeepDelete(item, null);
+
+        private static void AddMountPath(Dictionary<string, bool?> mountPaths, string path, bool? isLocal)
+        {
+            if (string.IsNullOrEmpty(path) || mountPaths.ContainsKey(path)) return;
+            mountPaths[path] = isLocal;
+        }
+
+        /// <summary>
+        /// 真正执行级联删除：先删目标文件及其同名关联文件，再自底向上删掉因此变空的目录。
+        /// 由调用方放在后台 Task 里执行，避免阻塞 Emby 的删除请求。
+        /// </summary>
+        public void ExecuteDeepDelete(HashSet<string> mountPaths)
+        {
+            if (mountPaths == null || mountPaths.Count == 0) return;
+
+            var comparer = new CommonUtility.FileSystemMetadataComparer();
+            var allPaths = new HashSet<FileSystemMetadata>(comparer);
+
+            foreach (var mountPath in mountPaths)
+            {
+                foreach (var file in GetRemoteDeletePaths(mountPath))
+                {
+                    allPaths.Add(file);
+                    var directory = _fileSystem.GetDirectoryName(file.FullName);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        allPaths.Add(new FileSystemMetadata { FullName = directory, IsDirectory = true });
+                    }
+                }
+            }
+
+            // 一、删文件（含字幕 / nfo / 图片等关联文件）
+            foreach (var file in allPaths.Where(p => !p.IsDirectory))
+            {
+                try
+                {
+                    _logger.Info("DeepDelete - Attempting to delete file: " + file.FullName);
+                    _fileSystem.DeleteFile(file.FullName, true);
+                }
+                catch (Exception e)
+                {
+                    _logger.Error("DeepDelete - Failed to delete file: " + file.FullName);
+                    _logger.Error(e.Message);
+                    _logger.Debug(e.StackTrace);
+                }
+            }
+
+            // 二、自底向上删空目录。删掉一个空目录后把它的父目录也加入队列；
+            //     processed 防止「父目录被反复加回」造成死循环（社区版没有这层保护）。
+            var directories = new HashSet<FileSystemMetadata>(allPaths.Where(p => p.IsDirectory), comparer);
+            var processed = new HashSet<string>(StringComparer.Ordinal);
+
+            while (directories.Count > 0)
+            {
+                var directory = directories.First();
+                directories.Remove(directory);
+                if (string.IsNullOrEmpty(directory.FullName) || !processed.Add(directory.FullName)) continue;
+
+                try
+                {
+                    if (!CommonUtility.IsDirectoryEmpty(directory.FullName)) continue;
+
+                    _logger.Info("DeepDelete - Attempting to delete empty folder: " + directory.FullName);
+                    _fileSystem.DeleteDirectory(directory.FullName, true, true);
+
+                    var parent = _fileSystem.GetDirectoryName(directory.FullName);
+                    // 只向上清理到挂载目录，绝不把文件系统根（C:\ / /）纳入删除队列
+                    if (!string.IsNullOrEmpty(parent) &&
+                        !string.Equals(parent, directory.FullName, StringComparison.Ordinal) &&
+                        !string.Equals(parent, Path.GetPathRoot(directory.FullName),
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        directories.Add(new FileSystemMetadata { FullName = parent, IsDirectory = true });
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Error("DeepDelete - Failed to delete empty folder: " + directory.FullName);
+                    _logger.Error(e.Message);
+                    _logger.Debug(e.StackTrace);
+                }
+            }
         }
 
         public async Task RefreshEpisodeMetadata(Episode taskItem, CancellationToken cancellationToken)

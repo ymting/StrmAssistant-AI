@@ -579,6 +579,8 @@ namespace StrmAssistant
                 var suppressPluginUpdates = options.ExperienceEnhanceOptions.SuppressPluginUpdates;
                 Logger.Info("SuppressPluginUpdates is set to {0}",
                     string.IsNullOrWhiteSpace(suppressPluginUpdates) ? "EMPTY" : suppressPluginUpdates);
+                Logger.Info("EnableDeepDelete is set to {0}",
+                    options.ExperienceEnhanceOptions.EnableDeepDelete);
                 // 老配置反序列化后该节点可能缺失，用 ?. 兜底避免保存设置时 NRE
                 Logger.Info("NoBoxsetsAutoCreation is set to {0}",
                     options.UIFunctionOptions?.NoBoxsetsAutoCreation == true);
@@ -604,6 +606,9 @@ namespace StrmAssistant
 
             // 隐藏合集媒体库：开关即时生效，关掉时把两个前缀都摘掉，合集库恢复正常显示/创建
             NoBoxsetsAutoCreation.Instance?.Apply();
+
+            // 深度删除：开关即时生效，关掉时摘掉 DeleteItem 的 prefix / finalizer
+            EnableDeepDelete.Instance?.Apply();
 
             // 中文搜索：从开变关时不能直接停，必须标记「下次启动恢复官方 tokenizer 并重建索引」，
             // 否则 fts_search9 会指向一个已不存在的 simple 分词器，搜索直接失效

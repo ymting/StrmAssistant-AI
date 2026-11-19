@@ -10,11 +10,32 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using MediaBrowser.Model.IO;
 
 namespace StrmAssistant.Common
 {
     public static class CommonUtility
     {
+        /// <summary>
+        /// 按 FullName 去重 FileSystemMetadata。深度删除会把「目标文件 + 关联文件 + 各级父目录」
+        /// 汇总到同一个集合，同名路径可能来自多个媒体源，必须按路径去重后再删。
+        /// </summary>
+        public class FileSystemMetadataComparer : IEqualityComparer<FileSystemMetadata>
+        {
+            public bool Equals(FileSystemMetadata x, FileSystemMetadata y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null || y is null) return false;
+                return string.Equals(x.FullName, y.FullName, StringComparison.Ordinal);
+            }
+
+            public int GetHashCode(FileSystemMetadata obj)
+            {
+                if (obj is null) throw new ArgumentNullException(nameof(obj));
+                return obj.FullName?.GetHashCode() ?? 0;
+            }
+        }
+
         private static readonly Regex MovieDbApiKeyRegex = new Regex("^[a-fA-F0-9]{32}$", RegexOptions.Compiled);
 
         public static bool IsValidHttpUrl(string url)
@@ -174,6 +195,10 @@ namespace StrmAssistant.Common
             if (root1 != root2) parent[root1] = root2;
         }
 
+        /// <summary>
+        /// 用 BCL 的 Directory 判断目录是否为空（只读）。深度删除的目标都是本地挂载路径，
+        /// 不需要 IFileSystem 的凭据 / UNC 抽象，这里不引入额外依赖。
+        /// </summary>
         public static bool IsDirectoryEmpty(string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
@@ -182,6 +207,45 @@ namespace StrmAssistant.Common
             var entries = Directory.EnumerateFileSystemEntries(directoryPath).Take(1);
 
             return !entries.Any();
+        }
+
+        /// <summary>
+        /// 判断是否为符号链接（Windows junction / Unix symlink）。深度删除需要先认出软链，
+        /// 才能顺着链接删到真实目标；普通文件交给 Emby 自己的删除流程，避免重复删除。
+        /// </summary>
+        public static bool IsSymlink(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+
+            try
+            {
+                var info = new FileInfo(path);
+                return info.Exists && (info.Attributes & FileAttributes.ReparsePoint) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 读取软链目标路径。netstandard2.1 里没有 FileInfo.LinkTarget（.NET 6 才引入），
+        /// 直接写会编译不过，因此用反射取值：Emby 4.9 / 4.10 运行在较新运行时上能取到，
+        /// 旧运行时取不到时返回 null，由调用方跳过该媒体源，不影响其它功能。
+        /// </summary>
+        public static string GetSymlinkTarget(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+
+            try
+            {
+                var property = typeof(FileInfo).GetProperty("LinkTarget");
+                return property?.GetValue(new FileInfo(path)) as string;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public static double LevenshteinDistance(string str1, string str2)

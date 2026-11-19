@@ -94,7 +94,8 @@ namespace StrmAssistant.Mod
 
     /// <summary>
     /// 极简版 Harmony 补丁管理，只保留本分支实际用到的能力。
-    /// 完整社区版这里挂了 25 个 mod，本分支只移植「代理服务器」与「中文搜索增强」。
+    /// 完整社区版这里挂了 25 个 mod，本分支按功能逐步移植：网络代理、中文搜索增强、
+    /// 插件更新屏蔽、隐藏合集媒体库、深度删除。
     /// </summary>
     internal static class PatchManager
     {
@@ -130,6 +131,7 @@ namespace StrmAssistant.Mod
             EnableProxyServer.Instance?.Apply();
             SuppressPluginUpdate.Instance?.Apply();
             NoBoxsetsAutoCreation.Instance?.Apply();
+            EnableDeepDelete.Instance?.Apply();
         }
 
         internal static void InitializeMods()
@@ -146,6 +148,8 @@ namespace StrmAssistant.Mod
             Plugin.Instance?.Logger?.Info("Mods - Init: EnhanceChineseSearch created");
             _ = new SuppressPluginUpdate();
             Plugin.Instance?.Logger?.Info("Mods - Init: SuppressPluginUpdate created");
+            _ = new EnableDeepDelete();
+            Plugin.Instance?.Logger?.Info("Mods - Init: EnableDeepDelete created");
             _ = new NoBoxsetsAutoCreation();
             Plugin.Instance?.Logger?.Info("Mods - Init: done");
         }

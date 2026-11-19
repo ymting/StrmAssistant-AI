@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using static StrmAssistant.Common.CommonUtility;
 using static StrmAssistant.Common.LanguageUtility;
 
@@ -56,12 +57,21 @@ namespace StrmAssistant.Web.Service
                 return;
             }
 
+            // 深度删除：必须在 Emby 清掉库记录前把 STRM / 软链的真实目标解析出来，
+            // 否则删完就查不到媒体源了（与 DeleteItem 补丁同样的时机要求）。
+            var deepDeleteEnabled = Plugin.Instance.GetPluginOptions()?.ExperienceEnhanceOptions?.EnableDeepDelete == true;
+            var allMountPaths = new Dictionary<string, bool?>();
+
             var deleteItems = item is Episode episode && request.DeleteParent
                 ? GetSeasonEpisodesSameVersion(episode)
                 : new List<BaseItem> { item };
 
             foreach (var deleteItem in deleteItems)
             {
+                var deepDeleteState = deepDeleteEnabled
+                    ? Plugin.LibraryApi.PrepareDeepDelete(deleteItem)
+                    : null;
+
                 var proceedToDelete = true;
                 var deletePaths = Plugin.LibraryApi.GetDeletePaths(deleteItem);
 
@@ -99,8 +109,43 @@ namespace StrmAssistant.Web.Service
                     {
                         // ignored
                     }
+
+                    // 只有本条目确实删成功了，才把它的挂载目标纳入级联删除
+                    if (deepDeleteState != null)
+                    {
+                        foreach (var kv in deepDeleteState)
+                        {
+                            allMountPaths[kv.Key] = kv.Value;
+                        }
+                    }
                 }
             }
+
+            if (allMountPaths.Count == 0) return;
+
+            var localMountPaths = new HashSet<string>(
+                allMountPaths.Where(kv => kv.Value ?? false).Select(kv => kv.Key));
+            var notifiedPaths = new HashSet<string>(allMountPaths.Keys);
+            var notifiedItem = item;
+
+            // 明确 fire-and-forget：删除与通知都不阻塞「删除版本」请求
+            _ = Task.Run(() =>
+            {
+                if (localMountPaths.Count > 0)
+                {
+                    try
+                    {
+                        Plugin.LibraryApi.ExecuteDeepDelete(localMountPaths);
+                    }
+                    catch (Exception e)
+                    {
+                        // 级联删除异常不能掐掉后面的通知
+                        _logger.Warn($"DeleteVersion - DeepDelete failed: {e.Message}");
+                    }
+                }
+
+                Plugin.NotificationApi?.DeepDeleteSendNotificationToAdmins(notifiedItem, notifiedPaths);
+            });
         }
 
         private List<BaseItem> GetSeasonEpisodesSameVersion(Episode episode)
