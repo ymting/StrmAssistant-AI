@@ -584,6 +584,12 @@ namespace StrmAssistant
             ThirdPartyPluginApi.ResetCache();
 
             // 代理开关是即时生效的：保存后重新决定 patch / unpatch
+            if (!suppress)
+            {
+                // 保存时真的经代理发一次请求，结果直接显示在 ProxyServerStatus（沿用社区原版做法）
+                RefreshProxyStatus(options.NetworkOptions);
+            }
+
             EnableProxyServer.Instance?.Apply();
 
             // 中文搜索：从开变关时不能直接停，必须标记「下次启动恢复官方 tokenizer 并重建索引」，
@@ -828,43 +834,46 @@ namespace StrmAssistant
 
             options.SearchEnhanceOptions.Initialize();
 
-            RefreshProxyStatus(options.NetworkOptions);
-
             return base.OnBeforeShowUI(options);
         }
 
-        /// <summary>打开设置页时探测一次代理连通性，把结果写到 ProxyServerStatus。</summary>
+        /// <summary>
+        /// 检测代理连通性（沿用社区原版做法：保存设置时真的经代理发一次请求）。
+        /// 结果写进 ProxyServerStatus，失败不影响保存。
+        /// </summary>
         private static void RefreshProxyStatus(NetworkOptions networkOptions)
         {
             if (networkOptions is null) return;
 
-            networkOptions.ResetStatus();
-
             if (!networkOptions.EnableProxyServer || string.IsNullOrWhiteSpace(networkOptions.ProxyServerUrl))
             {
+                networkOptions.ResetStatus();
                 return;
             }
 
-            if (!CommonUtility.TryParseProxyUrl(networkOptions.ProxyServerUrl, out _, out var host, out var port,
-                    out _, out _))
+            if (!CommonUtility.TryParseProxyUrl(networkOptions.ProxyServerUrl, out var scheme, out var host,
+                    out var port, out var username, out var password))
             {
-                networkOptions.ProxyServerStatus.Status = ItemStatus.Warning;
-                networkOptions.ProxyServerStatus.StatusText = "Invalid proxy server url";
+                networkOptions.ProxyServerStatus.Status = ItemStatus.Unavailable;
+                networkOptions.ProxyServerStatus.Caption = Resources.ProxyServer_Unavailable;
+                networkOptions.ProxyServerStatus.StatusText = "N/A";
                 return;
             }
 
-            var (isReachable, tcpPing) = CommonUtility.CheckProxyReachability(host, port);
+            var (isReachable, httpPing) = CommonUtility.CheckProxyReachability(scheme, host, port, username, password);
 
             if (isReachable)
             {
-                networkOptions.ProxyServerStatus.Status = ItemStatus.None;
+                networkOptions.ProxyServerStatus.Status = ItemStatus.Succeeded;
+                networkOptions.ProxyServerStatus.Caption = Resources.ProxyServer_Available;
                 networkOptions.ProxyServerStatus.StatusText =
-                    tcpPing.HasValue ? $"Reachable ({tcpPing.Value:F0} ms)" : "Reachable";
+                    httpPing.HasValue ? $"{httpPing.Value:F0} ms" : "-";
             }
             else
             {
-                networkOptions.ProxyServerStatus.Status = ItemStatus.Warning;
-                networkOptions.ProxyServerStatus.StatusText = "Unreachable - check host / port";
+                networkOptions.ProxyServerStatus.Status = ItemStatus.Unavailable;
+                networkOptions.ProxyServerStatus.Caption = Resources.ProxyServer_Unavailable;
+                networkOptions.ProxyServerStatus.StatusText = "N/A";
             }
         }
 
