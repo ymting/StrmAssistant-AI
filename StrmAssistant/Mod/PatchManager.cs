@@ -129,13 +129,25 @@ namespace StrmAssistant.Mod
             // 构造实例即完成 PatchTracker 注册；Apply() 按当前选项决定 patch 还是 unpatch
             EnableProxyServer.Instance?.Apply();
             SuppressPluginUpdate.Instance?.Apply();
+            NoBoxsetsAutoCreation.Instance?.Apply();
         }
 
         internal static void InitializeMods()
         {
-            _ = EnableProxyServer.Instance;
-            _ = EnhanceChineseSearch.Instance;
-            _ = SuppressPluginUpdate.Instance;
+            // 根本性修复：这里必须真正 new 每个 mod —— PatchBase<T>.Instance 是在
+            // 构造函数里赋值的，以前写成 `_ = Xxx.Instance` 只是读静态属性（此时为 null），
+            // 从不实例化，导致所有 Harmony 补丁（中文搜索/代理/插件屏蔽/合集屏蔽）
+            // 从 2.1.0 起从未挂上过。完整社区版 PatchManager.Initialize() 就是逐个 new。
+            // 构造每个 mod 即完成 PatchTracker 注册 + Instance 赋值。
+            Plugin.Instance?.Logger?.Info("Mods - Init: creating mods");
+            _ = new EnableProxyServer();
+            Plugin.Instance?.Logger?.Info("Mods - Init: EnableProxyServer created");
+            _ = new EnhanceChineseSearch();
+            Plugin.Instance?.Logger?.Info("Mods - Init: EnhanceChineseSearch created");
+            _ = new SuppressPluginUpdate();
+            Plugin.Instance?.Logger?.Info("Mods - Init: SuppressPluginUpdate created");
+            _ = new NoBoxsetsAutoCreation();
+            Plugin.Instance?.Logger?.Info("Mods - Init: done");
         }
 
         internal static bool IsModSuccess()
@@ -236,14 +248,17 @@ namespace StrmAssistant.Mod
             }
             catch (Exception e)
             {
+                // 补丁失败会让整个 mod 静默失效（中文搜索开关还会被回滚），
+                // 异常原因必须进常规日志，不能只在 DebugMode 才看得见。
+                Plugin.Instance.Logger.Warn(
+                    $"{tracker.Name} {(apply ? "Patch" : "Unpatch")} Failed: {e.Message}");
+
                 if (Plugin.Instance.DebugMode)
                 {
-                    Plugin.Instance.Logger.Debug(e.Message);
                     Plugin.Instance.Logger.Debug(e.StackTrace);
                 }
 
                 tracker.FallbackPatchApproach = PatchApproach.Reflection;
-                Plugin.Instance.Logger.Warn($"{tracker.Name} {(apply ? "Patch" : "Unpatch")} Failed");
             }
 
             return false;

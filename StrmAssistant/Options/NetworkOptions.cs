@@ -27,7 +27,18 @@ namespace StrmAssistant.Options
         public string ProxyServerUrl { get; set; } = string.Empty;
 
         [VisibleCondition(nameof(EnableProxyServer), SimpleCondition.IsTrue)]
-        public StatusItem ProxyServerStatus { get; set; } = new StatusItem();
+        public StatusItem ProxyServerStatus { get; set; } = CreateStatusItem();
+
+        private static StatusItem CreateStatusItem()
+        {
+            // Caption/StatusText 若为 null，GenericEdit 会渲染成字面量 "undefined"
+            return new StatusItem
+            {
+                Caption = string.Empty,
+                StatusText = string.Empty,
+                Status = ItemStatus.None
+            };
+        }
 
         [DisplayName("忽略证书校验")]
         [Description("仅当代理做中间人解密时才需要打开，默认关闭。")]

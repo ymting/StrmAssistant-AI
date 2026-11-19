@@ -61,6 +61,15 @@ namespace StrmAssistant.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 3. Chinese Search.
+        /// </summary>
+        public static string SearchEnhanceOptions_EditorTitle_Grouped {
+            get {
+                return ResourceManager.GetString("SearchEnhanceOptions_EditorTitle_Grouped", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to About.
         /// </summary>
         public static string AboutOptions_EditorTitle_About {

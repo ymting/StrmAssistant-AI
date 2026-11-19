@@ -36,7 +36,7 @@
     <value>媒体信息提取，视频截图，预览缩略图，声纹提取任务共享，必须在 1 至 20 之间，默认为 1。</value>
   </data>
   <data name="PluginOptions_EditorTitle_Strm_Extract" xml:space="preserve">
-    <value>媒体信息提取</value>
+    <value>2.1 媒体信息提取</value>
   </data>
   <data name="PluginOptions_LibraryScope_Library_Scope" xml:space="preserve">
     <value>媒体库范围</value>
@@ -63,7 +63,7 @@
     <value>最大片头时长 (秒)，默认为 150</value>
   </data>
   <data name="PluginOptions_IntroSkipOptions_Intro_Credits_Detection" xml:space="preserve">
-    <value>片头片尾探测</value>
+    <value>2.3 片头片尾探测</value>
   </data>
   <data name="IntroSkipOptions_LibraryScope_Library_Scope" xml:space="preserve">
     <value>媒体库范围</value>
@@ -99,7 +99,7 @@
     <value>{0} - {1} - 片尾标记已更新</value>
   </data>
   <data name="GeneralOptions_EditorTitle_General_Options" xml:space="preserve">
-    <value>通用</value>
+    <value>1.1 通用</value>
   </data>
   <data name="GeneralOptions_MergeMultiVersion_Merge_Multiple_Versions" xml:space="preserve">
     <value>自动合并多版本</value>
@@ -137,8 +137,11 @@
   <data name="Wiki_Link" xml:space="preserve">
     <value>功能介绍</value>
   </data>
+  <data name="SearchEnhanceOptions_EditorTitle_Grouped" xml:space="preserve">
+    <value>3.1 中文搜索增强</value>
+  </data>
   <data name="AboutOptions_EditorTitle_About" xml:space="preserve">
-    <value>关于</value>
+    <value>4.2 关于</value>
   </data>
   <data name="IntroSkipOptions_UserScope_User_Scope" xml:space="preserve">
     <value>允许的用户</value>
@@ -228,7 +231,7 @@
     <value>自动把标题中的中文转换为拼音首字母作为排序标题，默认关闭。</value>
   </data>
   <data name="PluginOptions_MetadataEnhanceOptions_Metadata_Enhance" xml:space="preserve">
-    <value>元数据增强</value>
+    <value>2.2 元数据增强</value>
   </data>
   <data name="MetadataEnhanceOptions_EnhanceNfoMetadata_Nfo_Metadata_Import_Enhanced" xml:space="preserve">
     <value>NFO 元数据导入增强</value>
@@ -246,7 +249,7 @@
     <value>艺术家</value>
   </data>
   <data name="UIFunctionOptions_EditorTitle_UI_Functions" xml:space="preserve">
-    <value>UI 功能</value>
+    <value>3.2 UI 功能</value>
   </data>
   <data name="UIFunctionOptions_BeautifyMissingMetadata_Beautify_Missing_Metadata" xml:space="preserve">
     <value>美化标题显示</value>
@@ -393,7 +396,7 @@
     <value>没有任何剧集媒体库开启了生成片头标记，最爱无效</value>
   </data>
   <data name="NetworkOptions_EditorTitle_Network" xml:space="preserve">
-    <value>网络</value>
+    <value>1.2 网络</value>
   </data>
   <data name="NetworkOptions_EnableProxyServer_Enable_Proxy_Server" xml:space="preserve">
     <value>启用代理服务器</value>
@@ -429,7 +432,7 @@
     <value>启用本地剧集组 TMDB</value>
   </data>
   <data name="ExperienceEnhanceOptions_EditorTitle_Experience_Enhance" xml:space="preserve">
-    <value>体验增强</value>
+    <value>4.1 体验增强</value>
   </data>
   <data name="CatchupTask_MediaInfo_MediaInfo" xml:space="preserve">
     <value>媒体信息提取</value>

@@ -123,7 +123,7 @@
     <value>Shared by mediainfo extract, image capture, video thumbnail and fingerprint extract tasks. It must be between 1 to 20. Default is 1.</value>
   </data>
   <data name="PluginOptions_EditorTitle_Strm_Extract" xml:space="preserve">
-    <value>MediaInfo Extract</value>
+    <value>2.1 Media Extract</value>
   </data>
   <data name="PluginOptions_LibraryScope_Library_Scope" xml:space="preserve">
     <value>Library Scope</value>
@@ -150,7 +150,7 @@
     <value>Max Credits Duration (Seconds), Default is 360</value>
   </data>
   <data name="PluginOptions_IntroSkipOptions_Intro_Credits_Detection" xml:space="preserve">
-    <value>Intro and Credits Detection</value>
+    <value>2.3 Intro &amp; Credits</value>
   </data>
   <data name="IntroSkipOptions_LibraryScope_Library_Scope" xml:space="preserve">
     <value>Library Scope</value>
@@ -186,7 +186,7 @@
     <value>{0} - {1} - Credits marker updated</value>
   </data>
   <data name="GeneralOptions_EditorTitle_General_Options" xml:space="preserve">
-    <value>General</value>
+    <value>1.1 General</value>
   </data>
   <data name="GeneralOptions_MergeMultiVersion_Merge_Multiple_Versions" xml:space="preserve">
     <value>Auto Merge Multi-version</value>
@@ -224,8 +224,11 @@
   <data name="Wiki_Link" xml:space="preserve">
     <value>Wiki Link</value>
   </data>
+  <data name="SearchEnhanceOptions_EditorTitle_Grouped" xml:space="preserve">
+    <value>3.1 Chinese Search</value>
+  </data>
   <data name="AboutOptions_EditorTitle_About" xml:space="preserve">
-    <value>About</value>
+    <value>4.2 About</value>
   </data>
   <data name="IntroSkipOptions_UserScope_User_Scope" xml:space="preserve">
     <value>Allowed Users</value>
@@ -315,7 +318,7 @@
     <value>Auto generate pinyin initials as sort title. Default is OFF.</value>
   </data>
   <data name="PluginOptions_MetadataEnhanceOptions_Metadata_Enhance" xml:space="preserve">
-    <value>Metadata Enhance</value>
+    <value>2.2 Metadata</value>
   </data>
   <data name="MetadataEnhanceOptions_EnhanceNfoMetadata_Nfo_Metadata_Import_Enhanced" xml:space="preserve">
     <value>Nfo Metadata Import Enhanced</value>
@@ -333,7 +336,7 @@
     <value>Music Artist</value>
   </data>
   <data name="UIFunctionOptions_EditorTitle_UI_Functions" xml:space="preserve">
-    <value>UI Functions</value>
+    <value>3.2 UI Functions</value>
   </data>
   <data name="UIFunctionOptions_BeautifyMissingMetadata_Beautify_Missing_Metadata" xml:space="preserve">
     <value>Beautify Title Display</value>
@@ -480,7 +483,7 @@
     <value>None of TV show libraries has intro detection enabled. Favorites is invalid.</value>
   </data>
   <data name="NetworkOptions_EditorTitle_Network" xml:space="preserve">
-    <value>Network</value>
+    <value>1.2 Network</value>
   </data>
   <data name="NetworkOptions_EnableProxyServer_Enable_Proxy_Server" xml:space="preserve">
     <value>Enable Proxy Server</value>
@@ -516,7 +519,7 @@
     <value>Enable Local Episode Group</value>
   </data>
   <data name="ExperienceEnhanceOptions_EditorTitle_Experience_Enhance" xml:space="preserve">
-    <value>Experience Enhance</value>
+    <value>4.1 Experience</value>
   </data>
   <data name="CatchupTask_MediaInfo_MediaInfo" xml:space="preserve">
     <value>MediaInfo Extract</value>

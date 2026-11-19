@@ -12,7 +12,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="PluginOptions_EditorTitle_Strm_Extract" xml:space="preserve">
-    <value>媒體訊息提取</value>
+    <value>2.1 媒體訊息提取</value>
   </data>
   <data name="PluginOptions_CatchupMode_Catch_up_Mode__Experimental_" xml:space="preserve">
     <value>追更模式</value>
@@ -63,7 +63,7 @@
     <value>最大片頭長度 (秒)，預設為 150</value>
   </data>
   <data name="PluginOptions_IntroSkipOptions_Intro_Credits_Detection" xml:space="preserve">
-    <value>片頭片尾探測</value>
+    <value>2.3 片頭片尾探測</value>
   </data>
   <data name="IntroSkipOptions_LibraryScope_Library_Scope" xml:space="preserve">
     <value>媒體庫範圍</value>
@@ -99,7 +99,7 @@
     <value>{0} - {1} - 片尾標記已更新</value>
   </data>
   <data name="GeneralOptions_EditorTitle_General_Options" xml:space="preserve">
-    <value>通用</value>
+    <value>1.1 通用</value>
   </data>
   <data name="GeneralOptions_MergeMultiVersion_Merge_Multiple_Versions" xml:space="preserve">
     <value>自動合併多版本</value>
@@ -134,8 +134,11 @@
   <data name="Repo_Link" xml:space="preserve">
     <value>項目連結</value>
   </data>
+  <data name="SearchEnhanceOptions_EditorTitle_Grouped" xml:space="preserve">
+    <value>3.1 中文搜尋增強</value>
+  </data>
   <data name="AboutOptions_EditorTitle_About" xml:space="preserve">
-    <value>關於</value>
+    <value>4.2 關於</value>
   </data>
   <data name="IntroSkipOptions_UserScope_User_Scope" xml:space="preserve">
     <value>允許的用戶</value>
@@ -228,7 +231,7 @@
     <value>自動把標題中的中文轉換為拼音首字母作為排序標題，預設為關閉。</value>
   </data>
   <data name="PluginOptions_MetadataEnhanceOptions_Metadata_Enhance" xml:space="preserve">
-    <value>元資料增強</value>
+    <value>2.2 元資料增強</value>
   </data>
   <data name="MetadataEnhanceOptions_EnhanceNfoMetadata_Nfo_Metadata_Import_Enhanced" xml:space="preserve">
     <value>NFO 元資料導入增強</value>
@@ -246,7 +249,7 @@
     <value>藝術家</value>
   </data>
   <data name="UIFunctionOptions_EditorTitle_UI_Functions" xml:space="preserve">
-    <value>UI 功能</value>
+    <value>3.2 UI 功能</value>
   </data>
   <data name="UIFunctionOptions_BeautifyMissingMetadata_Beautify_Missing_Metadata" xml:space="preserve">
     <value>美化標題顯示</value>
@@ -393,7 +396,7 @@
     <value>沒有任何劇集媒體庫開啟了生成片頭標記，最愛無效</value>
   </data>
   <data name="NetworkOptions_EditorTitle_Network" xml:space="preserve">
-    <value>網路</value>
+    <value>1.2 網路</value>
   </data>
   <data name="NetworkOptions_EnableProxyServer_Enable_Proxy_Server" xml:space="preserve">
     <value>啟用代理伺服器</value>
@@ -429,7 +432,7 @@
     <value>啟用本地劇集組 TMDB</value>
   </data>
   <data name="ExperienceEnhanceOptions_EditorTitle_Experience_Enhance" xml:space="preserve">
-    <value>體驗增強</value>
+    <value>4.1 體驗增強</value>
   </data>
   <data name="CatchupTask_MediaInfo_MediaInfo" xml:space="preserve">
     <value>媒體資訊擷取</value>

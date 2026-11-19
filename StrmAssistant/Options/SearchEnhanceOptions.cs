@@ -44,7 +44,9 @@ namespace StrmAssistant.Options
     /// </summary>
     public class SearchEnhanceOptions : EditableOptionsBase
     {
-        public override string EditorTitle => "中文搜索";
+        // 区块标题用独立键（带分组编号），不复用字段的 DisplayName 键，避免开关名字带上编号
+        [DisplayNameL("SearchEnhanceOptions_EditorTitle_Grouped", typeof(Resources))]
+        public override string EditorTitle => Resources.SearchEnhanceOptions_EditorTitle_Grouped;
 
         [DisplayNameL("ModOptions_EnhanceChineseSearch_Enhance_Chinese_Search", typeof(Resources))]
         [DescriptionL("ModOptions_EnhanceChineseSearch_Support_Chinese_fuzzy_search_and_Pinyin_search__Default_is_OFF_", typeof(Resources))]

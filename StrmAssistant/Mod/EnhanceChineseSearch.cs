@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace StrmAssistant.Mod
@@ -67,9 +68,20 @@ namespace StrmAssistant.Mod
 
         public EnhanceChineseSearch()
         {
+            Plugin.Instance?.Logger?.Info("EnhanceChineseSearch - ctor entered");
             Initialize();
+            Plugin.Instance?.Logger?.Info("EnhanceChineseSearch - ctor after Initialize");
 
             var options = GetOptions();
+
+            // 诊断日志：把代码实际读到的开关值、关键方法是否拿到打出来，
+            // 避免「界面显示开着但代码读到关」这类问题无从排查
+            Plugin.Instance?.Logger?.Info(
+                $"EnhanceChineseSearch - init: options={(options == null ? "NULL" : "ok")}, " +
+                $"enabled={options?.EnhanceChineseSearch}, restore={options?.EnhanceChineseSearchRestore}, " +
+                $"appVer={Utility.AppVer}, createConnection={(_createConnection != null)}, " +
+                $"getJoinCmd={(EmbySqliteApi.GetJoinCommandText != null)}, " +
+                $"enableJoinFts={(EmbySqliteApi.EnableJoinFtsSearch != null)}");
 
             if (options != null && (options.EnhanceChineseSearch || options.EnhanceChineseSearchRestore))
             {
@@ -133,10 +145,11 @@ namespace StrmAssistant.Mod
                 !PatchManager.PatchUnpatch(Instance.PatchTracker, true, _createConnection, null,
                     nameof(CreateConnectionPostfix)))
             {
-                if (Plugin.Instance.DebugMode)
-                {
-                    Plugin.Instance.Logger.Debug("EnhanceChineseSearch - PatchPhase1 Failed");
-                }
+                // 用 Warn 而非 Debug：这里失败会把用户刚勾的开关重置掉，
+                // 静默失败会让人以为"勾了没重启"，排查极其困难
+                Plugin.Instance.Logger.Warn(
+                    "EnhanceChineseSearch - PatchPhase1 failed (tokenizer export or CreateConnection patch). " +
+                    "Resetting option; check Emby version and libsimple.so.");
 
                 ResetOptions();
             }
@@ -457,10 +470,19 @@ namespace StrmAssistant.Mod
 
         private static bool PatchSearchFunctions()
         {
+            // Harmony 对 postfix 的 __result 类型是严格匹配的，挂错会在 Patch() 里直接抛异常。
+            // 完整社区版 2.0.0.30 针对的旧版 Emby 返回 string；实测 4.9.1.90 与 4.10.1.0
+            // 的 GetJoinCommandText（3 参 / 5 参两个重载）都返回 StringBuilder。
+            // 一旦这里挂错，异常被 PatchUnpatch 吞掉、开关被回滚，整个中文搜索静默失效。
+            // 因此按运行时真实返回类型选对应的 postfix，旧版 / 新版都能覆盖。
+            var joinPostfix = EmbySqliteApi.GetJoinCommandText?.ReturnType == typeof(StringBuilder)
+                ? nameof(GetJoinCommandTextPostfixBuilder)
+                : nameof(GetJoinCommandTextPostfix);
+
             return PatchManager.PatchUnpatch(Instance.PatchTracker, true, EmbySqliteApi.EnableJoinFtsSearch,
                        nameof(EnableJoinFtsSearchPrefix)) &&
                    PatchManager.PatchUnpatch(Instance.PatchTracker, true, EmbySqliteApi.GetJoinCommandText, null,
-                       nameof(GetJoinCommandTextPostfix)) &&
+                       joinPostfix) &&
                    PatchManager.PatchUnpatch(Instance.PatchTracker, true, EmbySqliteApi.CreateSearchTerm,
                        nameof(CreateSearchTermPrefix)) &&
                    PatchManager.PatchUnpatch(Instance.PatchTracker, true, EmbySqliteApi.CacheIdsFromTextParams,
@@ -525,6 +547,13 @@ namespace StrmAssistant.Mod
             return false;
         }
 
+        /// <summary>把 FTS 的 MATCH 表达式改成走 simple 分词器（含拼音）的查询函数。</summary>
+        private static string GetMatchReplacement() =>
+            GetOptions()?.ExcludeOriginalTitleFromSearch == true
+                ? "match '-OriginalTitle:' || simple_query(@SearchTerm)"
+                : "match simple_query(@SearchTerm)";
+
+        // 旧版 Emby：GetJoinCommandText 返回 string
         [HarmonyPostfix]
         private static void GetJoinCommandTextPostfix(InternalItemsQuery query,
             List<KeyValuePair<string, string>> bindParams, string mediaItemsTableQualifier, ref string __result)
@@ -532,9 +561,21 @@ namespace StrmAssistant.Mod
             if (!string.IsNullOrEmpty(query.SearchTerm) && __result != null &&
                 __result.Contains("match @SearchTerm"))
             {
-                __result = GetOptions()?.ExcludeOriginalTitleFromSearch == true
-                    ? __result.Replace("match @SearchTerm", "match '-OriginalTitle:' || simple_query(@SearchTerm)")
-                    : __result.Replace("match @SearchTerm", "match simple_query(@SearchTerm)");
+                __result = __result.Replace("match @SearchTerm", GetMatchReplacement());
+            }
+        }
+
+        // Emby 4.9.x / 4.10.x：GetJoinCommandText 返回 StringBuilder。
+        // StringBuilder 是可变引用类型，原地 Replace 即可，无需（也不能）把 __result 换成 string。
+        [HarmonyPostfix]
+        private static void GetJoinCommandTextPostfixBuilder(InternalItemsQuery query,
+            List<KeyValuePair<string, string>> bindParams, string mediaItemsTableQualifier,
+            ref StringBuilder __result)
+        {
+            if (!string.IsNullOrEmpty(query.SearchTerm) && __result != null &&
+                __result.ToString().Contains("match @SearchTerm"))
+            {
+                __result.Replace("match @SearchTerm", GetMatchReplacement());
             }
         }
 

@@ -19,6 +19,14 @@ build/
 # 本地构建产物，不入库
 /dist/
 
+# .NET SDK 编译工具链放在 D:\soft\dotnet-sdk-8.0.428，不在项目内
+
+# API 导出的一次性数据产物，不入库
+/output/
+
+# 版本归档：整个 versions/ 只本地保留，不推送到云端（dll 版权敏感，变更记录也本地留档）
+/versions/
+
 # Emby 宿主程序集：仅编译期引用，版权归 Emby，不入库
 # 编译前从 Emby 的 system 目录拷入：Emby.Sqlite.dll / SQLitePCL.pretty.dll / SQLitePCLRawEx.core.dll / Emby.Server.Implementations.dll
 /lib/refs/
@@ -39,3 +47,13 @@ build/
 # 极空间 CLI 登录态（可能含凭据），绝不入库
 /_zspace_home/
 /_zspace_*.txt
+
+# 生产环境日志（含内网拓扑、API token 请求串、会话信息），绝不入库
+/_embyserver*.txt
+/_*.txt
+
+# 本地 Harmony 复现工程（内含 Emby 真机 dll 副本，版权敏感），不入库
+/_harmony_repro*/
+
+# WorkBuddy 会话记忆与项目数据（含内部排障记录与环境信息），只留本地
+/.workbuddy/

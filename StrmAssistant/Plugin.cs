@@ -579,6 +579,9 @@ namespace StrmAssistant
                 var suppressPluginUpdates = options.ExperienceEnhanceOptions.SuppressPluginUpdates;
                 Logger.Info("SuppressPluginUpdates is set to {0}",
                     string.IsNullOrWhiteSpace(suppressPluginUpdates) ? "EMPTY" : suppressPluginUpdates);
+                // 老配置反序列化后该节点可能缺失，用 ?. 兜底避免保存设置时 NRE
+                Logger.Info("NoBoxsetsAutoCreation is set to {0}",
+                    options.UIFunctionOptions?.NoBoxsetsAutoCreation == true);
             }
             _currentMergeMultiVersion = options.ExperienceEnhanceOptions.MergeMultiVersion;
 
@@ -598,6 +601,9 @@ namespace StrmAssistant
 
             // 插件更新屏蔽同样是即时生效的：改完名单保存就重挂 / 摘掉补丁
             SuppressPluginUpdate.Instance?.Apply();
+
+            // 隐藏合集媒体库：开关即时生效，关掉时把两个前缀都摘掉，合集库恢复正常显示/创建
+            NoBoxsetsAutoCreation.Instance?.Apply();
 
             // 中文搜索：从开变关时不能直接停，必须标记「下次启动恢复官方 tokenizer 并重建索引」，
             // 否则 fts_search9 会指向一个已不存在的 simple 分词器，搜索直接失效
@@ -620,6 +626,15 @@ namespace StrmAssistant
 
         protected override PluginOptions OnBeforeShowUI(PluginOptions options)
         {
+            // 老配置里 StatusItem 的 Caption/StatusText 可能是 null，
+            // GenericEdit 会把它渲染成字面量 "undefined"；显示前兜底成空串
+            var proxyStatus = options.NetworkOptions?.ProxyServerStatus;
+            if (proxyStatus != null)
+            {
+                if (proxyStatus.Caption == null) proxyStatus.Caption = string.Empty;
+                if (proxyStatus.StatusText == null) proxyStatus.StatusText = string.Empty;
+            }
+
             options.Disclaimer.Clear();
             options.Disclaimer.Add(
                 new GenericListItem
