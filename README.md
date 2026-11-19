@@ -91,6 +91,20 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 
 内嵌四个平台的原生扩展：`win_x64` / `linux_x64` / `linux_arm64` / `osx_universal`，哈希与完整版一致。
 
+**拼音搜索实测**（直接加载 `libsimple.so` 建 FTS5 表验证，非推测）：
+
+| 输入 | 命中 | 说明 |
+| --- | --- | --- |
+| `zhangwei` | 张伟的夏天 | 全拼连写 |
+| `zhang wei` | 张伟的夏天 | 空格分音节 |
+| `zw` | 张伟的夏天 | 拼音首字母 |
+| `zhizhuxia` | 蜘蛛侠：英雄无归 | 全拼连写 |
+| `蜘蛛` | 蜘蛛侠：英雄无归 | 中文分词 |
+
+机制：索引侧由分词器写入拼音 token，查询侧把 `match @SearchTerm` 换成 `match simple_query(@SearchTerm)`，
+由扩展把连写的字母串展开成音节组合（`zhangwei` → `zhang+wei*` / `z+h+a+n+g+...` 等多路 OR）。
+所以**拼音搜索必须在「Enhance Chinese Search」开启并完成索引重建后才生效**，开关关着走官方 `unicode61`，没有拼音。
+
 > 已验证 Emby 4.9.1.90 的 `fts_search9` 表与四个 patch 方法都在，但**尚未在真机跑过索引重建**
 > （完整版作者只验证到 4.9.0.48）。开启前请先备份 `data/library.db`。
 
