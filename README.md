@@ -53,6 +53,23 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 > 说明：本分支只对 **MovieDb** 做了代码级适配（因为只有它被实际调用）。InfuseSync / OMDb / OpenSubtitles
 > 在 Lite 代码里没有依赖，能做的只有「检测 + 告警」，不具备 PRO 那种魔改共存能力。
 
+### 网络代理
+
+设置页新增 **Network** 区块（移植自完整社区版的 `NetworkOptions`）：
+
+| 项 | 说明 |
+| --- | --- |
+| Enable Proxy Server | 打开后 Emby 的出站请求全部走下面的代理 |
+| Proxy Server | `http://host:port`、`https://host:port`，支持 `http://user:pass@host:port` |
+| Ignore Certificate Validation | 代理做 MITM 时才需要打开 |
+| Proxy Server Status | 打开设置页时自动做一次 TCP 连通性检测，显示延迟或不可达 |
+
+实现方式：给 `ApplicationHost.CreateHttpClientHandler` 挂 Harmony Postfix，Emby 每造一个 Handler 就把
+`WebProxy` 塞进去，因此 TMDB / 豆瓣 / 插件下载等所有走 Emby 内置 HttpClient 的请求都会走代理，不改业务代码。
+
+> Emby 4.9 这里造的是 `SocketsHttpHandler`（4.8 是 `HttpClientHandler`），插件对两者都做了处理。
+> 内网地址（10.x / 172.16-31.x / 192.168.x）默认直连，不走代理。
+
 ## 用途
 
 1. 提高首次播放的起播速度

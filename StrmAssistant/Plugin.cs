@@ -31,6 +31,7 @@ using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Tasks;
 using StrmAssistant.Common;
 using StrmAssistant.IntroSkip;
+using StrmAssistant.Mod;
 using StrmAssistant.Options;
 using StrmAssistant.Properties;
 using StrmAssistant.ScheduledTask;
@@ -169,6 +170,10 @@ namespace StrmAssistant
             VideoThumbnailApi = new VideoThumbnailApi(libraryManager, fileSystem, imageExtractionManager, itemRepository,
                 mediaMountManager, serverApplicationPaths, libraryMonitor, ffmpegManager);
             ShortcutMenuHelper.Initialize(configurationManager);
+
+            // 移植自完整社区版的 Harmony 补丁框架，当前只挂「代理服务器」
+            PatchManager.InitializeMods();
+            PatchManager.Initialize();
 
             if (_currentCatchupMode) QueueManager.Initialize();
             if (_currentEnableIntroSkip) PlaySessionMonitor.Initialize();
@@ -576,6 +581,9 @@ namespace StrmAssistant
             // 用户可能在保存设置前刚启用了某个第三方插件，重新解析一次 MovieDb provider
             ThirdPartyPluginApi.ResetCache();
 
+            // 代理开关是即时生效的：保存后重新决定 patch / unpatch
+            EnableProxyServer.Instance?.Apply();
+
             base.OnOptionsSaved(options);
         }
 
@@ -800,7 +808,44 @@ namespace StrmAssistant
 
             options.IntroSkipOptions.UserList = userList;
 
+            RefreshProxyStatus(options.NetworkOptions);
+
             return base.OnBeforeShowUI(options);
+        }
+
+        /// <summary>打开设置页时探测一次代理连通性，把结果写到 ProxyServerStatus。</summary>
+        private static void RefreshProxyStatus(NetworkOptions networkOptions)
+        {
+            if (networkOptions is null) return;
+
+            networkOptions.ResetStatus();
+
+            if (!networkOptions.EnableProxyServer || string.IsNullOrWhiteSpace(networkOptions.ProxyServerUrl))
+            {
+                return;
+            }
+
+            if (!CommonUtility.TryParseProxyUrl(networkOptions.ProxyServerUrl, out _, out var host, out var port,
+                    out _, out _))
+            {
+                networkOptions.ProxyServerStatus.Status = ItemStatus.Warning;
+                networkOptions.ProxyServerStatus.StatusText = "Invalid proxy server url";
+                return;
+            }
+
+            var (isReachable, tcpPing) = CommonUtility.CheckProxyReachability(host, port);
+
+            if (isReachable)
+            {
+                networkOptions.ProxyServerStatus.Status = ItemStatus.None;
+                networkOptions.ProxyServerStatus.StatusText =
+                    tcpPing.HasValue ? $"Reachable ({tcpPing.Value:F0} ms)" : "Reachable";
+            }
+            else
+            {
+                networkOptions.ProxyServerStatus.Status = ItemStatus.Warning;
+                networkOptions.ProxyServerStatus.StatusText = "Unreachable - check host / port";
+            }
         }
 
         protected override void OnCreatePageInfo(PluginPageInfo pageInfo)

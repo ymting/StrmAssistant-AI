@@ -38,6 +38,9 @@ namespace StrmAssistant.Options
         [DisplayNameL("PluginOptions_MetadataEnhanceOptions_Metadata_Enhance", typeof(Resources))]
         public MetadataEnhanceOptions MetadataEnhanceOptions { get; set; } = new MetadataEnhanceOptions();
 
+        [DisplayName("Network")]
+        public NetworkOptions NetworkOptions { get; set; } = new NetworkOptions();
+
         [DisplayNameL("PluginOptions_IntroSkipOptions_Intro_Credits_Detection", typeof(Resources))]
         public IntroSkipOptions IntroSkipOptions { get; set; } = new IntroSkipOptions();
 
