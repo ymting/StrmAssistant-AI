@@ -133,6 +133,7 @@ namespace StrmAssistant.Mod
         internal static void InitializeMods()
         {
             _ = EnableProxyServer.Instance;
+            _ = EnhanceChineseSearch.Instance;
         }
 
         internal static bool IsModSuccess()
@@ -142,6 +143,52 @@ namespace StrmAssistant.Mod
 
             return snapshot.Where(t => t.IsSupported)
                 .All(t => t.FallbackPatchApproach == t.DefaultPatchApproach);
+        }
+
+        /// <summary>
+        /// 把目标方法复制成 stub（用于调用原方法实现，例如 sqlite3_enable_load_extension）。
+        /// </summary>
+        internal static bool ReversePatch(PatchTracker tracker, MethodBase targetMethod, string stub)
+        {
+            if (tracker.FallbackPatchApproach != PatchApproach.Harmony) return false;
+
+            if (targetMethod is null)
+            {
+                Plugin.Instance.Logger.Warn($"{tracker.Name} Init Failed - reverse patch target not found");
+                tracker.FallbackPatchApproach = PatchApproach.None;
+                return false;
+            }
+
+            var harmonyMethod = GetHarmonyMethod(tracker.PatchType, stub);
+
+            if (harmonyMethod != null)
+            {
+                try
+                {
+                    HarmonyMod.CreateReversePatcher(targetMethod, harmonyMethod).Patch();
+
+                    if (Plugin.Instance.DebugMode)
+                    {
+                        Plugin.Instance.Logger.Debug(
+                            $"ReversePatch {targetMethod.DeclaringType?.Name}.{targetMethod.Name} for {tracker.Name} Success");
+                    }
+
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    if (Plugin.Instance.DebugMode)
+                    {
+                        Plugin.Instance.Logger.Debug(e.Message);
+                        Plugin.Instance.Logger.Debug(e.StackTrace);
+                    }
+
+                    tracker.FallbackPatchApproach = PatchApproach.Reflection;
+                    Plugin.Instance.Logger.Warn($"{tracker.Name} ReversePatch Failed");
+                }
+            }
+
+            return false;
         }
 
         internal static bool PatchUnpatch(PatchTracker tracker, bool apply, MethodBase targetMethod,

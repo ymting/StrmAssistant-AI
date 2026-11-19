@@ -15,3 +15,10 @@ build/
 
 # 本地构建产物，不入库
 /dist/
+
+# Emby 宿主程序集：仅编译期引用，版权归 Emby，不入库
+# 编译前从 Emby 的 system 目录拷入：Emby.Sqlite.dll / SQLitePCL.pretty.dll / SQLitePCLRawEx.core.dll / Emby.Server.Implementations.dll
+/lib/refs/
+
+# 临时工作目录（含提取的二进制与 sql 测试库），不入库
+/_tmp_fts/

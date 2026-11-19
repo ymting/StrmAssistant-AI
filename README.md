@@ -70,6 +70,30 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 > Emby 4.9 这里造的是 `SocketsHttpHandler`（4.8 是 `HttpClientHandler`），插件对两者都做了处理。
 > 内网地址（10.x / 172.16-31.x / 192.168.x）默认直连，不走代理。
 
+### 中文搜索增强
+
+设置页新增 **Chinese Search** 区块（移植自完整社区版 `EnhanceChineseSearch`）：
+
+| 项 | 说明 |
+| --- | --- |
+| Enhance Chinese Search | 把 FTS 索引换成自定义 `simple` 分词器，支持中文分词与拼音搜索 |
+| Exclude Original Title | 搜索结果中排除 OriginalTitle |
+| Search Scope | 按标题搜索时默认纳入的条目类型，留空为全部 |
+
+**开与关都必须重启，且顺序不能省：**
+
+1. **开启**：释放 `plugins/libsimple.so` → 加载扩展 → 把 `fts_search9` 切成 `simple` → **重建索引**
+   （条目多时几分钟，期间搜索为空，日志会打 `Filling fts_search9 Start/Complete`）
+2. **关闭**：保存后只是标记 restore，**必须重启 Emby** 才会把 tokenizer 换回
+   `unicode61 remove_diacritics 2` 并重建。跳过这步会留下「表指向已不存在的分词器」，
+   搜索会直接失效 —— 这正是手动替换 dll 不按流程操作会踩的坑
+3. 平台不支持 / `libsimple.so` 释放失败时**拒绝启用**，不会留下坏状态
+
+内嵌四个平台的原生扩展：`win_x64` / `linux_x64` / `linux_arm64` / `osx_universal`，哈希与完整版一致。
+
+> 已验证 Emby 4.9.1.90 的 `fts_search9` 表与四个 patch 方法都在，但**尚未在真机跑过索引重建**
+> （完整版作者只验证到 4.9.0.48）。开启前请先备份 `data/library.db`。
+
 ## 用途
 
 1. 提高首次播放的起播速度

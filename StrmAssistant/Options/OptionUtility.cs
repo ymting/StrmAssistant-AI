@@ -13,6 +13,28 @@ namespace StrmAssistant.Options
         private static HashSet<string> _selectedCatchupTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private static HashSet<string> _selectedIntroSkipPreferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Emby 版本，供移植自完整版的模块做版本判断（延迟读取，避免静态构造顺序问题）
+        public static Version AppVer =>
+            Plugin.Instance?.ApplicationHost?.ApplicationVersion ?? new Version(0, 0);
+
+        public static readonly Version Ver4830 = new Version("4.8.3.0");
+        public static readonly Version Ver4900 = new Version("4.9.0.0");
+        public static readonly Version Ver49015 = new Version("4.9.0.15");
+        public static readonly Version Ver49037 = new Version("4.9.0.37");
+
+        /// <summary>中文搜索时默认纳入的条目类型；为空表示不额外限制。</summary>
+        public static string[] GetSearchScope()
+        {
+            var scope = Plugin.Instance?.GetPluginOptions()?.SearchEnhanceOptions?.SearchScope;
+
+            return string.IsNullOrWhiteSpace(scope)
+                ? Array.Empty<string>()
+                : scope.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => s.Length > 0)
+                    .ToArray();
+        }
+
         public static void InitializeOptionCache()
         {
             UpdateCatchupScope();

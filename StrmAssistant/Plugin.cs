@@ -86,6 +86,7 @@ namespace StrmAssistant
         private bool _currentEnableIntroSkip;
         private bool _currentUnlockIntroSkip;
         private bool _currentMergeMultiVersion;
+        private bool _currentEnhanceChineseSearch;
 
         private static readonly HashSet<string> ExcludedCollectionTypes = new HashSet<string>
         {
@@ -140,6 +141,7 @@ namespace StrmAssistant
             _currentEnableIntroSkip = GetOptions().IntroSkipOptions.EnableIntroSkip;
             _currentUnlockIntroSkip = GetOptions().IntroSkipOptions.UnlockIntroSkip;
             _currentMergeMultiVersion = GetOptions().ExperienceEnhanceOptions.MergeMultiVersion;
+            _currentEnhanceChineseSearch = GetOptions().SearchEnhanceOptions.EnhanceChineseSearch;
             InitializeOptionCache();
 
             Logger.Info("Third-party plugins detected: " + ThirdPartyPluginApi.DescribeLoadedPlugins());
@@ -584,6 +586,22 @@ namespace StrmAssistant
             // 代理开关是即时生效的：保存后重新决定 patch / unpatch
             EnableProxyServer.Instance?.Apply();
 
+            // 中文搜索：从开变关时不能直接停，必须标记「下次启动恢复官方 tokenizer 并重建索引」，
+            // 否则 fts_search9 会指向一个已不存在的 simple 分词器，搜索直接失效
+            var searchOptions = options.SearchEnhanceOptions;
+            var enhanceChineseSearch = searchOptions.EnhanceChineseSearch;
+
+            if (_currentEnhanceChineseSearch && !enhanceChineseSearch &&
+                !searchOptions.EnhanceChineseSearchRestore)
+            {
+                _currentEnhanceChineseSearch = false;
+                EnhanceChineseSearch.MarkRestoreRequired();
+            }
+            else
+            {
+                _currentEnhanceChineseSearch = enhanceChineseSearch;
+            }
+
             base.OnOptionsSaved(options);
         }
 
@@ -807,6 +825,8 @@ namespace StrmAssistant
             }
 
             options.IntroSkipOptions.UserList = userList;
+
+            options.SearchEnhanceOptions.Initialize();
 
             RefreshProxyStatus(options.NetworkOptions);
 

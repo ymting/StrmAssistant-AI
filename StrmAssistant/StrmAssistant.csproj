@@ -15,6 +15,31 @@
     <EmbeddedResource Include="Properties\thumb.png" />
     <EmbeddedResource Include="Web\Resources\shortcuts.js" />
     <EmbeddedResource Include="Web\Resources\strmassistant.js" />
+    <!-- 中文搜索增强用的 SQLite 扩展：按平台内嵌，运行时释放到 plugins/libsimple.so -->
+    <EmbeddedResource Include="Tokenizer\StrmAssistant.Tokenizer.win_x64.libsimple.so" LogicalName="StrmAssistant.Tokenizer.win_x64.libsimple.so" />
+    <EmbeddedResource Include="Tokenizer\StrmAssistant.Tokenizer.linux_x64.libsimple.so" LogicalName="StrmAssistant.Tokenizer.linux_x64.libsimple.so" />
+    <EmbeddedResource Include="Tokenizer\StrmAssistant.Tokenizer.linux_arm64.libsimple.so" LogicalName="StrmAssistant.Tokenizer.linux_arm64.libsimple.so" />
+    <EmbeddedResource Include="Tokenizer\StrmAssistant.Tokenizer.osx_universal.libsimple.so" LogicalName="StrmAssistant.Tokenizer.osx_universal.libsimple.so" />
+  </ItemGroup>
+  <!-- Emby 宿主程序集：只编译期引用，运行时不打包（Private=false），由 Emby 自己提供。
+       dll 不入库（见 .gitignore），编译前从 Emby system 目录拷到 lib/refs。 -->
+  <ItemGroup>
+    <Reference Include="Emby.Sqlite">
+      <HintPath>..\lib\refs\Emby.Sqlite.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SQLitePCL.pretty">
+      <HintPath>..\lib\refs\SQLitePCL.pretty.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SQLitePCLRawEx.core">
+      <HintPath>..\lib\refs\SQLitePCLRawEx.core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Emby.Server.Implementations">
+      <HintPath>..\lib\refs\Emby.Server.Implementations.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CHTCHSConv" Version="1.0.0">
@@ -51,6 +76,8 @@
     </EmbeddedResource>
   </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipPostBuild)' != 'true'">
-    <Exec Command="$(ILRepack) /out:%25AppData%25\Emby-Server\programdata\plugins\$(TargetFileName) $(TargetPath) $(TargetDir)ChineseConverter.dll /lib:$(TargetDir)" />
+    <!-- Harmony 的运行时程序集不进 bin，先拷进来再一起合并 -->
+    <Copy SourceFiles="$(NuGetPackageRoot)lib.harmony\2.3.3\lib\net8.0\0Harmony.dll" DestinationFolder="$(TargetDir)" Condition="!Exists('$(TargetDir)0Harmony.dll')" />
+    <Exec Command="$(ILRepack) /out:%25AppData%25\Emby-Server\programdata\plugins\$(TargetFileName) $(TargetPath) $(TargetDir)ChineseConverter.dll $(TargetDir)0Harmony.dll /lib:$(TargetDir)" />
   </Target>
 </Project>
