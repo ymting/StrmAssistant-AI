@@ -20,6 +20,10 @@ build/
 # 编译前从 Emby 的 system 目录拷入：Emby.Sqlite.dll / SQLitePCL.pretty.dll / SQLitePCLRawEx.core.dll / Emby.Server.Implementations.dll
 /lib/refs/
 
+# 上游参考件：完整社区版/PRO 的 dll 与反编译源码、Emby 服务端程序集
+# 版权归各自所有者（社区版 GPL-3.0、PRO 闭源、Emby LLC），本仓库只分发自己的修改代码
+/lib/upstream/
+
 # 临时工作目录（含提取的二进制与 sql 测试库），不入库
 /_tmp_fts/
 
