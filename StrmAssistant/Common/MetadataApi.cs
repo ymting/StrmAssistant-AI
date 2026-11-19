@@ -124,11 +124,9 @@ namespace StrmAssistant.Common
 
         private IMetadataProvider GetMovieDbPersonProvider()
         {
-            var metadataProviders = Plugin.Instance.ApplicationHost.GetExports<IMetadataProvider>().ToArray();
-            var movieDbPersonProvider = metadataProviders
-                .FirstOrDefault(provider => provider.GetType().Name == "MovieDbPersonProvider");
-
-            return movieDbPersonProvider;
+            // 交给 ThirdPartyPluginApi 按「能力」匹配，不依赖具体类名：
+            // MovieDb 1.x 的类名是 MovieDbPersonProvider，2.x 很可能改名，硬编码类型名会静默失效。
+            return ThirdPartyPluginApi.ResolveMovieDbPersonProvider();
         }
 
         private Task<MetadataResult<TItemType>> GetMetadataFromProvider<TItemType, TIdType>(

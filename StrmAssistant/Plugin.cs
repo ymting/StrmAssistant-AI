@@ -141,6 +141,8 @@ namespace StrmAssistant
             _currentMergeMultiVersion = GetOptions().ExperienceEnhanceOptions.MergeMultiVersion;
             InitializeOptionCache();
 
+            Logger.Info("Third-party plugins detected: " + ThirdPartyPluginApi.DescribeLoadedPlugins());
+
             if (GetOptions().AboutOptions.DebugMode)
             {
                 DebugMode = true;
@@ -571,6 +573,9 @@ namespace StrmAssistant
 
             if (suppress) _currentSuppressOnOptionsSaved = false;
 
+            // 用户可能在保存设置前刚启用了某个第三方插件，重新解析一次 MovieDb provider
+            ThirdPartyPluginApi.ResetCache();
+
             base.OnOptionsSaved(options);
         }
 
@@ -598,6 +603,35 @@ namespace StrmAssistant
                 options.ConflictPluginLoadedStatus.Caption = string.Empty;
                 options.ConflictPluginLoadedStatus.StatusText = string.Empty;
                 options.ConflictPluginLoadedStatus.Status = ItemStatus.None;
+            }
+
+            // 第三方插件状态：让「装了哪个版本、哪块功能会受影响」在设置页直接可见，
+            // 避免 MovieDb 之类升级后功能静默失效却查不到原因
+            options.ThirdPartyPluginStatus.Clear();
+            foreach (var pluginInfo in ThirdPartyPluginApi.GetLoadedPlugins())
+            {
+                var conflict = pluginInfo.IsLoaded && pluginInfo.IsWarning;
+                var primaryText = pluginInfo.IsLoaded
+                    ? $"{pluginInfo.Name} {pluginInfo.Version}"
+                    : $"{pluginInfo.Name} - Not detected";
+
+                // MovieDb 是本插件唯一有代码依赖的第三方插件，把「演职人员增强是否接上」直接显示出来，
+                // 这样它升级后如果 provider 改到匹配不到，设置页一眼可见，不必翻日志
+                if (pluginInfo.IsLoaded && pluginInfo.Name == "MovieDb")
+                {
+                    var resolved = ThirdPartyPluginApi.ResolveMovieDbPersonProvider() != null;
+                    primaryText += resolved ? " · Person provider matched" : " · Person provider NOT matched";
+                    conflict = !resolved;
+                }
+
+                options.ThirdPartyPluginStatus.Add(new GenericListItem
+                {
+                    PrimaryText = primaryText,
+                    SecondaryText = pluginInfo.Note,
+                    Icon = conflict ? IconNames.warning : IconNames.info,
+                    IconMode = ItemListIconMode.SmallRegular,
+                    Status = conflict ? ItemStatus.Warning : ItemStatus.None
+                });
             }
 
             var libraries = _libraryManager.GetVirtualFolders();

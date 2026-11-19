@@ -26,6 +26,9 @@ namespace StrmAssistant.Options
         [VisibleCondition(nameof(IsModSuccess), SimpleCondition.IsFalse)]
         public StatusItem ModStatus { get; set; } = new StatusItem();
 
+        [DisplayName("Third-party Plugins")]
+        public GenericItemList ThirdPartyPluginStatus { get; set; } = new GenericItemList();
+
         [DisplayNameL("GeneralOptions_EditorTitle_General_Options", typeof(Resources))]
         public GeneralOptions GeneralOptions { get; set; } = new GeneralOptions();
 

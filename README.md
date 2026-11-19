@@ -38,6 +38,21 @@ dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 默认会通过 ILRepack 把 `ChineseConverter.dll` 合并输出到 `%AppData%\Emby-Server\programdata\plugins\StrmAssistantLite.dll`；
 只想要编译产物可加 `-p:SkipPostBuild=true`，结果在 `StrmAssistant/bin/Release/netstandard2.1/`。
 
+### 第三方插件适配
+
+插件设置页顶部新增 **Third-party Plugins** 区块，列出已检测到的相关插件及其版本。
+
+| 插件 | 与本插件的关系 | 处理方式 |
+| --- | --- | --- |
+| **MovieDb** | 「演职人员增强」通过它的 Person provider 取数据 | 由原先「精确匹配类名 `MovieDbPersonProvider`」改为 **按接口 + 类名/程序集名/显示名三重匹配**，MovieDb 升级改名也不会静默失效；设置页直接显示 `Person provider matched / NOT matched` |
+| **InfuseSync** | 存在已知线程安全冲突 | 检测到即标黄告警，不做魔改 |
+| **StrmExtract** | 功能重叠，不能共存 | 检测到即标黄告警 |
+| **OMDb / OpenSubtitles** | 无代码依赖 | 仅显示版本，供排查评分/字幕来源 |
+| **DataExplorer2** | 用于注入右键菜单命令 | 存在则注入，不存在自动跳过 |
+
+> 说明：本分支只对 **MovieDb** 做了代码级适配（因为只有它被实际调用）。InfuseSync / OMDb / OpenSubtitles
+> 在 Lite 代码里没有依赖，能做的只有「检测 + 告警」，不具备 PRO 那种魔改共存能力。
+
 ## 用途
 
 1. 提高首次播放的起播速度
