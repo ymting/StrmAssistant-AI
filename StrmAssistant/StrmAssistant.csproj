@@ -3,8 +3,8 @@
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
     <AssemblyVersion>2.1.1.0</AssemblyVersion>
     <FileVersion>2.1.1.0</FileVersion>
-    <!-- dev 迭代号：生产发版时直接取 2.1.1，其后 dev 转 2.1.2-1 继续递增 -->
-    <Version>2.1.1-1</Version>
+    <!-- 生产正式版 2.1.1；dev 分支发版后转 2.1.2-1 继续递增 -->
+    <Version>2.1.1</Version>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
     <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
     <AssemblyName>$(MSBuildProjectName)Lite</AssemblyName>

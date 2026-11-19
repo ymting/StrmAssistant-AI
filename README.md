@@ -1,12 +1,32 @@
-# Emby神医助手
+# Emby 神医助手
 
 ![logo](StrmAssistant/Properties/thumb.png "logo")
 
 ## [[English]](README.en.md)
 
-## 兼容性（本分支）
+> 基于社区版 2.0.0.27 的修改分支，让插件能在 Emby 4.9+ 上继续用。当前版本 **2.1.1**。
 
-> 本仓库是基于社区版 2.0.0.27 的修改版，唯一目的是让插件能在 **Emby 4.8.11.0 之后的版本**上正常工作。
+## 快速开始
+
+1. 到 [Releases](https://github.com/ymting/StrmAssistant-AI/releases/latest) 下载 `StrmAssistantLite.dll`
+2. 放进 Emby 配置目录的 `plugins` 文件夹，确保文件所有者/权限与同目录其它插件一致
+3. 重启 Emby，在插件设置页里按需开启功能
+
+> 本分支**只支持 Emby 4.9.0.0 及以上**；4.8.11 及更早请用官方社区版 2.0.0.30。
+> 插件自带的「更新本插件」计划任务已从本仓库 Release 拉取新版，不会把上游那份只兼容到 4.8.11 的 dll 拉回来覆盖。
+
+### 比官方社区版多了什么
+
+| 功能 | 说明 |
+| --- | --- |
+| 4.9 / 4.10 / 4.11 适配 | 按新接口重写反射调用与参数绑定，4.8 之后不再崩 |
+| 中文搜索增强（含拼音搜索） | `simple` 分词器，支持中文分词、全拼连写与首字母 |
+| 阻止指定插件自动在线更新 | 填插件名即可，设置页会显示命中与拼错的条目 |
+| 网络代理 | Emby 出站请求统一走代理，支持连通性检测 |
+| 第三方插件适配 | MovieDb 按接口匹配 provider，冲突插件检测告警 |
+| 设置页与计划任务全量中文化 | 界面文案、任务名均为中文 |
+
+## 兼容性
 
 | Emby 版本 | 状态 |
 | --- | --- |
@@ -21,22 +41,15 @@
 - `IMediaMountManager.Mount` 首参由 `ReadOnlyMemory<char>` 改回 `string`，`IMediaMount.MountedPath` 改为 `MountedPathInfo`
 - `Emby.Providers` 内部类型 `AudioFingerprintManager` / `ThumbnailGenerator` / `SubtitleResolver` 的构造函数与方法签名变更 → 改为「按可满足的依赖挑构造函数 + 按参数名绑定实参」
 
-**安装**
-
-1. 编译或下载本仓库的 `StrmAssistantLite.dll`
-2. 放入 Emby 配置目录下的 `plugins` 目录，确保文件所有者/权限与同目录其它插件一致
-3. 重启 Emby
-
-> 插件的「更新插件」计划任务已改为指向本仓库，不会再把上游那份只兼容到 4.8.11 的 dll 拉回来覆盖。
-
 **自行编译**
 
 ```bash
 dotnet build StrmAssistant/StrmAssistant.csproj -c Release
 ```
 
-默认会通过 ILRepack 把 `ChineseConverter.dll` 合并输出到 `%AppData%\Emby-Server\programdata\plugins\StrmAssistantLite.dll`；
+默认会通过 ILRepack 把依赖合并输出到 `%AppData%\Emby-Server\programdata\plugins\StrmAssistantLite.dll`；
 只想要编译产物可加 `-p:SkipPostBuild=true`，结果在 `StrmAssistant/bin/Release/netstandard2.1/`。
+注意单纯 `SkipPostBuild=true` 的产物**不含 Harmony**，不能直接用，需要自行合并 `0Harmony.dll` 与 `ChineseConverter.dll`。
 
 ### 第三方插件适配
 
