@@ -34,7 +34,6 @@ namespace StrmAssistant.Common
 
         private const string MediaInfoFileExtension = "-mediainfo.json";
 
-        private readonly bool _fallbackApproach;
         private readonly MethodInfo _getStaticMediaSources;
 
         internal class MediaSourceWithChapters
@@ -57,46 +56,24 @@ namespace StrmAssistant.Common
             _itemRepository = itemRepository;
             _jsonSerializer = jsonSerializer;
 
-            if (Plugin.Instance.ApplicationHost.ApplicationVersion >= new Version("4.9.0.25"))
+            // Emby 4.8 -> 4.9 期间 GetStaticMediaSources 的重载签名一直在加参数
+            // （4.8 为 6 参，4.9.0.25 起 7 参，4.9.1.90 起 8/9 参），硬编码签名必然在某个小版本上失效。
+            // 因此统一按「方法名 + 含 LibraryOptions 参数、参数最多」挑选重载，再按参数名逐项绑定实参。
+            try
             {
-                try
-                {
-                    _getStaticMediaSources = mediaSourceManager.GetType()
-                        .GetMethod("GetStaticMediaSources",
-                            new[]
-                            {
-                                typeof(BaseItem), typeof(bool), typeof(bool), typeof(bool), typeof(LibraryOptions),
-                                typeof(DeviceProfile), typeof(User)
-                            });
-                    _fallbackApproach = true;
-                }
-                catch (Exception e)
-                {
-                    if (Plugin.Instance.DebugMode)
-                    {
-                        _logger.Debug(e.Message);
-                        _logger.Debug(e.StackTrace);
-                    }
-                }
+                var candidates = mediaSourceManager.GetType()
+                    .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(m => m.Name == "GetStaticMediaSources")
+                    .Where(m => m.GetParameters().Any(p => p.ParameterType == typeof(LibraryOptions)))
+                    .OrderByDescending(m => m.GetParameters().Length)
+                    .ToList();
+
+                _getStaticMediaSources = candidates.FirstOrDefault();
 
                 if (_getStaticMediaSources is null)
                 {
-                    _logger.Warn($"{nameof(MediaInfoApi)} Init Failed");
+                    _logger.Warn($"{nameof(MediaInfoApi)} - GetStaticMediaSources overload not found");
                 }
-            }
-
-            try
-            {
-                var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
-                var libraryMonitorImpl =
-                    embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.IO.LibraryMonitor");
-                var alwaysIgnoreExtensions = libraryMonitorImpl.GetField("_alwaysIgnoreExtensions",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-                var currentArray = (string[])alwaysIgnoreExtensions.GetValue(libraryMonitor);
-                var newArray = new string[currentArray.Length + 1];
-                Array.Copy(currentArray, newArray, currentArray.Length);
-                newArray[newArray.Length - 1] = ".json";
-                alwaysIgnoreExtensions.SetValue(libraryMonitor, newArray);
             }
             catch (Exception e)
             {
@@ -108,29 +85,110 @@ namespace StrmAssistant.Common
 
                 _logger.Warn($"{nameof(MediaInfoApi)} Init Failed");
             }
+
+            try
+            {
+                var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
+                var libraryMonitorImpl =
+                    embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.IO.LibraryMonitor");
+
+                // Emby 4.8：实例字段 _alwaysIgnoreExtensions 是扩展名数组，把 .json 追进去即可，
+                // 这样写 mediainfo.json 不会触发媒体库变更事件。
+                var alwaysIgnoreExtensions = libraryMonitorImpl?.GetField("_alwaysIgnoreExtensions",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+
+                if (alwaysIgnoreExtensions?.GetValue(libraryMonitor) is string[] currentArray)
+                {
+                    var newArray = new string[currentArray.Length + 1];
+                    Array.Copy(currentArray, newArray, currentArray.Length);
+                    newArray[newArray.Length - 1] = ".json";
+                    alwaysIgnoreExtensions.SetValue(libraryMonitor, newArray);
+                }
+                else
+                {
+                    // Emby 4.9：改为静态字典 AlwaysIgnoreFiles（按文件名匹配），且文件变更回调里
+                    // 已有「扩展名不在媒体白名单内直接忽略」的判断，.json 本来就不会触发扫描，无需打补丁。
+                    var alwaysIgnoreFiles = libraryMonitorImpl?.GetField("AlwaysIgnoreFiles",
+                        BindingFlags.Static | BindingFlags.NonPublic);
+
+                    if (alwaysIgnoreFiles is null && Plugin.Instance.DebugMode)
+                    {
+                        _logger.Debug("LibraryMonitor ignore-list patch skipped: unsupported layout");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                // 该项只是减少无谓扫描的优化，失败不应影响媒体信息提取
+                if (Plugin.Instance.DebugMode)
+                {
+                    _logger.Debug(e.Message);
+                    _logger.Debug(e.StackTrace);
+                }
+            }
         }
 
-        private List<MediaSourceInfo> GetStaticMediaSourcesByApi(BaseItem item, bool enableAlternateMediaSources,
-            LibraryOptions libraryOptions)
+        /// <summary>
+        /// 按参数名绑定 GetStaticMediaSources 的实参，屏蔽 4.8 / 4.9.0.x / 4.9.1+ 之间的签名差异。
+        /// </summary>
+        private static object[] BuildStaticMediaSourcesArguments(MethodInfo method, BaseItem item,
+            bool enableAlternateMediaSources, LibraryOptions libraryOptions)
         {
-            return _mediaSourceManager.GetStaticMediaSources(item, enableAlternateMediaSources, false,
-                libraryOptions, null, null);
-        }
+            var parameters = method.GetParameters();
+            var args = new object[parameters.Length];
 
-        private List<MediaSourceInfo> GetStaticMediaSourcesByRef(BaseItem item, bool enableAlternateMediaSources,
-            LibraryOptions libraryOptions)
-        {
-            return (List<MediaSourceInfo>)_getStaticMediaSources.Invoke(_mediaSourceManager,
-                new object[] { item, enableAlternateMediaSources, false, false, libraryOptions, null, null });
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var parameter = parameters[i];
+
+                switch (parameter.Name)
+                {
+                    case "item":
+                        args[i] = item;
+                        break;
+                    case "enableAlternateMediaSources":
+                        args[i] = enableAlternateMediaSources;
+                        break;
+                    case "enablePathSubstitution":
+                        args[i] = false;
+                        break;
+                    case "fillMediaStreams":
+                        args[i] = true;
+                        break;
+                    case "fillChapters":
+                        args[i] = false;
+                        break;
+                    case "collectionFolders":
+                        args[i] = null;
+                        break;
+                    case "libraryOptions":
+                        args[i] = libraryOptions;
+                        break;
+                    case "cancellationToken":
+                        args[i] = CancellationToken.None;
+                        break;
+                    default:
+                        // deviceProfile / user 等可选参数一律传 null
+                        args[i] = parameter.ParameterType.IsValueType
+                            ? Activator.CreateInstance(parameter.ParameterType)
+                            : null;
+                        break;
+                }
+            }
+
+            return args;
         }
 
         public List<MediaSourceInfo> GetStaticMediaSources(BaseItem item, bool enableAlternateMediaSources)
         {
             var options = _libraryManager.GetLibraryOptions(item);
 
-            return !_fallbackApproach
-                ? GetStaticMediaSourcesByApi(item, enableAlternateMediaSources, options)
-                : GetStaticMediaSourcesByRef(item, enableAlternateMediaSources, options);
+            if (_getStaticMediaSources is null) return new List<MediaSourceInfo>();
+
+            var args = BuildStaticMediaSourcesArguments(_getStaticMediaSources, item, enableAlternateMediaSources,
+                options);
+
+            return (List<MediaSourceInfo>)_getStaticMediaSources.Invoke(_mediaSourceManager, args);
         }
 
         public MetadataRefreshOptions GetMediaInfoRefreshOptions()

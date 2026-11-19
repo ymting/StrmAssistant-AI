@@ -816,11 +816,11 @@ namespace StrmAssistant.Common
 
         public async Task<string> GetStrmMountPath(string strmPath)
         {
-            var path = strmPath.AsMemory();
+            // Emby 4.9 起 IMediaMountManager.Mount 的第一参数由 ReadOnlyMemory<char> 改回 string，
+            // 同时 IMediaMount.MountedPath 被 MountedPathInfo（FileSystemMetadata）取代
+            using var mediaMount = await _mediaMountManager.Mount(strmPath, null, CancellationToken.None);
 
-            using var mediaMount = await _mediaMountManager.Mount(path, null, CancellationToken.None);
-            
-            return mediaMount?.MountedPath;
+            return mediaMount?.MountedPathInfo?.FullName;
         }
 
         public BaseItem[] GetItemsByIds(long[] itemIds)

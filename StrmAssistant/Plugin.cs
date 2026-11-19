@@ -110,6 +110,16 @@ namespace StrmAssistant
             Instance = this;
             Logger = logManager.GetLogger(Name);
             Logger.Info("Plugin is getting loaded.");
+
+            // 本分支按 Emby 4.9 的公开接口编译（IItemRepository / IMediaSourceManager / IMediaMountManager 均有变更），
+            // 在 4.8 及更早版本上会因找不到方法而报 MissingMethodException，这里提前给出明确提示。
+            if (applicationHost?.ApplicationVersion is { } appVersion && appVersion < new Version("4.9.0.0"))
+            {
+                Logger.Warn(
+                    $"This build requires Emby Server 4.9.0.0 or later, current version is {appVersion}. " +
+                    "Please upgrade Emby or use the official 2.0.0.x build for Emby 4.8.");
+            }
+
             ApplicationHost = applicationHost;
             ApplicationPaths = applicationPaths;
 

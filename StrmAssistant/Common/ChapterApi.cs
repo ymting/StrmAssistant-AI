@@ -10,6 +10,7 @@ using StrmAssistant.IntroSkip;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using static StrmAssistant.Options.IntroSkipOptions;
 using static StrmAssistant.Options.Utility;
 
@@ -30,35 +31,42 @@ namespace StrmAssistant.Common
             _itemRepository = itemRepository;
         }
 
+        /// <summary>
+        /// 按标记类型读取章节。Emby 4.9 起 IItemRepository 的按标记查询重载新增了 CancellationToken 参数
+        /// （4.8 版本为 GetChapters(long, MarkerType[])），统一在此封装，避免各处散落调用。
+        /// </summary>
+        private List<ChapterInfo> GetChaptersByMarker(BaseItem item, params MarkerType[] markerTypes)
+        {
+            return _itemRepository.GetChapters(item.InternalId, markerTypes, CancellationToken.None);
+        }
+
         public bool HasIntro(BaseItem item)
         {
-            return _itemRepository.GetChapters(item.InternalId, new[] { MarkerType.IntroStart }).Any();
+            return GetChaptersByMarker(item, MarkerType.IntroStart).Any();
         }
 
         public long? GetIntroStart(BaseItem item)
         {
-            var introStart = _itemRepository.GetChapters(item.InternalId, new[] { MarkerType.IntroStart })
-                .FirstOrDefault();
+            var introStart = GetChaptersByMarker(item, MarkerType.IntroStart).FirstOrDefault();
 
             return introStart?.StartPositionTicks;
         }
 
         public long? GetIntroEnd(BaseItem item)
         {
-            var introEnd = _itemRepository.GetChapters(item.InternalId, new[] { MarkerType.IntroEnd }).FirstOrDefault();
+            var introEnd = GetChaptersByMarker(item, MarkerType.IntroEnd).FirstOrDefault();
 
             return introEnd?.StartPositionTicks;
         }
 
         public bool HasCredits(BaseItem item)
         {
-            return _itemRepository.GetChapters(item.InternalId, new[] { MarkerType.CreditsStart }).Any();
+            return GetChaptersByMarker(item, MarkerType.CreditsStart).Any();
         }
 
         public long? GetCreditsStart(BaseItem item)
         {
-            var creditsStart = _itemRepository.GetChapters(item.InternalId, new[] { MarkerType.CreditsStart })
-                .FirstOrDefault();
+            var creditsStart = GetChaptersByMarker(item, MarkerType.CreditsStart).FirstOrDefault();
 
             return creditsStart?.StartPositionTicks;
         }

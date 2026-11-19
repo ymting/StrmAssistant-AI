@@ -45,23 +45,30 @@ namespace StrmAssistant.Common
             {
                 var embyProviders = Assembly.Load("Emby.Providers");
                 var subtitleResolverType = embyProviders.GetType("Emby.Providers.MediaInfo.SubtitleResolver");
-                var subtitleResolverConstructor = subtitleResolverType.GetConstructor(new[]
-                {
-                    typeof(ILocalizationManager), typeof(IFileSystem), typeof(ILibraryManager)
-                });
-                _subtitleResolver = subtitleResolverConstructor?.Invoke(new object[]
-                {
-                    localizationManager, fileSystem, libraryManager
-                });
-                _getExternalSubtitleStreams = subtitleResolverType.GetMethod("GetExternalSubtitleStreams");
+                var subtitleResolverConstructor = ReflectionHelper.ResolveConstructor(subtitleResolverType,
+                    localizationManager, fileSystem, libraryManager);
+
+                _subtitleResolver = subtitleResolverConstructor?.Invoke(
+                    ReflectionHelper.BindArguments(subtitleResolverConstructor, null,
+                        localizationManager, fileSystem, libraryManager));
+
+                // Emby 4.9 起 SubtitleResolver.GetExternalSubtitleStreams 被
+                // BaseTrackResolver.GetExternalTracks(item, startIndex, directoryService, libraryOptions,
+                // namingOptions, clearCache) 取代（多了一个 libraryOptions 参数），这里优先取新方法。
+                _getExternalSubtitleStreams = ReflectionHelper.ResolveMethod(subtitleResolverType,
+                                                "GetExternalTracks", typeof(BaseItem)) ??
+                                            ReflectionHelper.ResolveMethod(subtitleResolverType,
+                                                "GetExternalSubtitleStreams", typeof(BaseItem));
 
                 var ffProbeSubtitleInfoType = embyProviders.GetType("Emby.Providers.MediaInfo.FFProbeSubtitleInfo");
-                var ffProbeSubtitleInfoConstructor = ffProbeSubtitleInfoType.GetConstructor(new[]
-                {
-                    typeof(IMediaProbeManager)
-                });
-                _ffProbeSubtitleInfo = ffProbeSubtitleInfoConstructor?.Invoke(new object[] { mediaProbeManager });
-                _updateExternalSubtitleStream = ffProbeSubtitleInfoType.GetMethod("UpdateExternalSubtitleStream");
+                var ffProbeSubtitleInfoConstructor = ReflectionHelper.ResolveConstructor(ffProbeSubtitleInfoType,
+                    mediaProbeManager);
+
+                _ffProbeSubtitleInfo = ffProbeSubtitleInfoConstructor?.Invoke(
+                    ReflectionHelper.BindArguments(ffProbeSubtitleInfoConstructor, null, mediaProbeManager));
+
+                _updateExternalSubtitleStream = ReflectionHelper.ResolveMethod(ffProbeSubtitleInfoType,
+                    "UpdateExternalSubtitleStream", typeof(BaseItem));
             }
             catch (Exception e)
             {
@@ -83,9 +90,21 @@ namespace StrmAssistant.Common
             IDirectoryService directoryService, bool clearCache)
         {
             var namingOptions = _libraryManager.GetNamingOptions();
+            var libraryOptions = _libraryManager.GetLibraryOptions(item);
 
-            return (List<MediaStream>)_getExternalSubtitleStreams.Invoke(_subtitleResolver,
-                new object[] { item, startIndex, directoryService, namingOptions, clearCache });
+            var args = ReflectionHelper.BindArguments(_getExternalSubtitleStreams,
+                new Dictionary<string, object>
+                {
+                    { "item", item },
+                    { "startIndex", startIndex },
+                    { "directoryService", directoryService },
+                    { "libraryOptions", libraryOptions },
+                    { "namingOptions", namingOptions },
+                    { "clearCache", clearCache }
+                },
+                item, directoryService, libraryOptions, namingOptions);
+
+            return (List<MediaStream>)_getExternalSubtitleStreams.Invoke(_subtitleResolver, args);
         }
 
         private Task<bool> UpdateExternalSubtitleStream(BaseItem item,
@@ -93,8 +112,18 @@ namespace StrmAssistant.Common
         {
             var libraryOptions = _libraryManager.GetLibraryOptions(item);
 
-            return (Task<bool>)_updateExternalSubtitleStream.Invoke(_ffProbeSubtitleInfo,
-                new object[] { item, subtitleStream, options, libraryOptions, cancellationToken });
+            var args = ReflectionHelper.BindArguments(_updateExternalSubtitleStream,
+                new Dictionary<string, object>
+                {
+                    { "item", item },
+                    { "stream", subtitleStream },
+                    { "options", options },
+                    { "libraryOptions", libraryOptions },
+                    { "cancellationToken", cancellationToken }
+                },
+                item, subtitleStream, options, libraryOptions);
+
+            return (Task<bool>)_updateExternalSubtitleStream.Invoke(_ffProbeSubtitleInfo, args);
         }
 
         public MetadataRefreshOptions GetExternalSubtitleRefreshOptions()
@@ -113,7 +142,12 @@ namespace StrmAssistant.Common
 
         public bool HasExternalSubtitleChanged(BaseItem item, IDirectoryService directoryService, bool clearCache)
         {
-            var currentExternalSubtitleFiles = _libraryManager.GetExternalSubtitleFiles(item.InternalId);
+            // Emby 4.9 移除了 ILibraryManager.GetExternalSubtitleFiles(long)，
+            // 改由 IItemRepository.GetExternalTracks 直接读取库中已记录的外挂轨道（Tuple<路径, 类型>）。
+            var currentExternalSubtitleFiles = _itemRepository
+                .GetExternalTracks(item.InternalId, new[] { MediaStreamType.Subtitle }, CancellationToken.None)
+                .Select(t => t.Item1)
+                .ToList();
             var currentSet = new HashSet<string>(currentExternalSubtitleFiles, StringComparer.Ordinal);
 
             try

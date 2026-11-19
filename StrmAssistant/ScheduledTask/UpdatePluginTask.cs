@@ -44,7 +44,11 @@ namespace StrmAssistant.ScheduledTask
         }
 
         private static string PluginAssemblyFilename => Assembly.GetExecutingAssembly().GetName().Name + ".dll";
-        private static string RepoReleaseUrl => "https://api.github.com/repos/sjtuross/StrmAssistant/releases/latest";
+
+        // 注意：这里指向本仓库（适配 4.9+ 的修改版）。若仍指向上游 sjtuross/StrmAssistant，
+        // 该任务会把上游那份只兼容到 4.8.11 的 dll 下载回来并覆盖当前插件，等于把兼容性修复抹掉。
+        private static string RepoReleaseUrl =>
+            "https://api.github.com/repos/ymting/StrmAssistant-AI/releases/latest";
 
         public string Key => "UpdatePluginTask";
 
@@ -99,6 +103,13 @@ namespace StrmAssistant.ScheduledTask
 
                 var currentVersion = ParseVersion(Plugin.Instance.CurrentVersion);
                 var remoteVersion = ParseVersion(apiResult?.tag_name);
+
+                if (apiResult?.tag_name is null)
+                {
+                    _logger.Info("No release found for this fork, skip update check");
+                    progress.Report(100);
+                    return;
+                }
 
                 if (currentVersion.CompareTo(remoteVersion) < 0)
                 {
@@ -167,6 +178,15 @@ namespace StrmAssistant.ScheduledTask
             }
             catch (Exception e)
             {
+                // 本仓库可能还没有发布任何 Release，此时 404 属正常情况，不必当作更新失败告警
+                if (e.Message.IndexOf("NotFound", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    e.Message.Contains("404"))
+                {
+                    _logger.Info("No release found for this fork, skip update check");
+                    progress.Report(100);
+                    return;
+                }
+
                 _activityManager.Create(new ActivityLogEntry
                 {
                     Name = string.Format(_localizationManager.GetLocalizedString("NameInstallFailedOn"), Category,

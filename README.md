@@ -4,6 +4,40 @@
 
 ## [[English]](README.en.md)
 
+## 兼容性（本分支）
+
+> 本仓库是基于社区版 2.0.0.27 的修改版，唯一目的是让插件能在 **Emby 4.8.11.0 之后的版本**上正常工作。
+
+| Emby 版本 | 状态 |
+| --- | --- |
+| 4.9.0.0 ~ 4.11.x | ✅ 支持（已按 4.9+ 接口重新适配，并用 4.9.1.90 / 4.11 参考程序集验证编译） |
+| 4.8.11.0 及更早 | ❌ 不再支持，请使用官方社区版 2.0.0.30 |
+
+**本次适配涉及的 Emby 变更**
+
+- `ILibraryManager.GetExternalSubtitleFiles(long)` 被移除 → 改用 `IItemRepository.GetExternalTracks`
+- `IItemRepository.GetChapters(long, MarkerType[])` → 新增 `CancellationToken` 参数
+- `IMediaSourceManager.GetStaticMediaSources` 重载在 4.8 / 4.9.0.x / 4.9.1+ 各不相同 → 改为按参数名动态绑定
+- `IMediaMountManager.Mount` 首参由 `ReadOnlyMemory<char>` 改回 `string`，`IMediaMount.MountedPath` 改为 `MountedPathInfo`
+- `Emby.Providers` 内部类型 `AudioFingerprintManager` / `ThumbnailGenerator` / `SubtitleResolver` 的构造函数与方法签名变更 → 改为「按可满足的依赖挑构造函数 + 按参数名绑定实参」
+
+**安装**
+
+1. 编译或下载本仓库的 `StrmAssistantLite.dll`
+2. 放入 Emby 配置目录下的 `plugins` 目录，确保文件所有者/权限与同目录其它插件一致
+3. 重启 Emby
+
+> 插件的「更新插件」计划任务已改为指向本仓库，不会再把上游那份只兼容到 4.8.11 的 dll 拉回来覆盖。
+
+**自行编译**
+
+```bash
+dotnet build StrmAssistant/StrmAssistant.csproj -c Release
+```
+
+默认会通过 ILRepack 把 `ChineseConverter.dll` 合并输出到 `%AppData%\Emby-Server\programdata\plugins\StrmAssistantLite.dll`；
+只想要编译产物可加 `-p:SkipPostBuild=true`，结果在 `StrmAssistant/bin/Release/netstandard2.1/`。
+
 ## 用途
 
 1. 提高首次播放的起播速度

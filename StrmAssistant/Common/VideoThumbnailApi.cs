@@ -27,9 +27,6 @@ namespace StrmAssistant.Common
         private readonly object _thumbnailGenerator;
         private readonly MethodInfo _refreshThumbnailImages;
 
-        private static readonly Version AppVer = Plugin.Instance.ApplicationHost.ApplicationVersion;
-        private static readonly Version Ver4936 = new Version("4.9.0.36");
-
         public VideoThumbnailApi(ILibraryManager libraryManager, IFileSystem fileSystem,
             IImageExtractionManager imageExtractionManager, IItemRepository itemRepository,
             IMediaMountManager mediaMountManager, IServerApplicationPaths applicationPaths,
@@ -42,21 +39,17 @@ namespace StrmAssistant.Common
             {
                 var embyProviders = Assembly.Load("Emby.Providers");
                 var thumbnailGenerator = embyProviders.GetType("Emby.Providers.MediaInfo.ThumbnailGenerator");
-                var thumbnailGeneratorConstructor = thumbnailGenerator.GetConstructor(
-                    BindingFlags.Public | BindingFlags.Instance, null,
-                    new[]
-                    {
-                        typeof(IFileSystem), typeof(ILogger), typeof(IImageExtractionManager),
-                        typeof(IItemRepository), typeof(IMediaMountManager), typeof(IServerApplicationPaths),
-                        typeof(ILibraryMonitor), typeof(IFfmpegManager)
-                    }, null);
-                _thumbnailGenerator = thumbnailGeneratorConstructor?.Invoke(new object[]
-                {
+                var thumbnailGeneratorConstructor = ReflectionHelper.ResolveConstructor(thumbnailGenerator,
                     fileSystem, _logger, imageExtractionManager, itemRepository, mediaMountManager,
-                    applicationPaths, libraryMonitor, ffmpegManager
-                });
-                _refreshThumbnailImages = thumbnailGenerator.GetMethod("RefreshThumbnailImages",
-                    BindingFlags.Public | BindingFlags.Instance);
+                    applicationPaths, libraryMonitor, ffmpegManager);
+
+                _thumbnailGenerator = thumbnailGeneratorConstructor?.Invoke(
+                    ReflectionHelper.BindArguments(thumbnailGeneratorConstructor, null,
+                        fileSystem, _logger, imageExtractionManager, itemRepository, mediaMountManager,
+                        applicationPaths, libraryMonitor, ffmpegManager));
+
+                _refreshThumbnailImages = ReflectionHelper.ResolveMethod(thumbnailGenerator,
+                    "RefreshThumbnailImages", typeof(Video));
             }
             catch (Exception e)
             {
@@ -77,23 +70,26 @@ namespace StrmAssistant.Common
             IDirectoryService directoryService, List<ChapterInfo> chapters, bool extractImages, bool saveChapters,
             CancellationToken cancellationToken)
         {
-            var mediaSource = AppVer >= Ver4936
-                ? item.GetMediaSources(false, false, libraryOptions).FirstOrDefault()
-                : null;
+            var mediaSource = item.GetMediaSources(false, false, libraryOptions).FirstOrDefault();
 
-            var parameters = AppVer >= Ver4936
-                ? new object[]
+            // RefreshThumbnailImages 的参数在 4.9 各小版本间反复增删（mediaSource / videoStream / replaceExistingImages），
+            // 按参数名绑定即可同时兼容，缺失的参数会自动填默认值。
+            var args = ReflectionHelper.BindArguments(_refreshThumbnailImages,
+                new Dictionary<string, object>
                 {
-                    item, mediaSource, null, libraryOptions, directoryService, chapters, extractImages,
-                    saveChapters, cancellationToken
-                }
-                : new object[]
-                {
-                    item, null, libraryOptions, directoryService, chapters, extractImages, saveChapters,
-                    cancellationToken
-                };
+                    { "item", item },
+                    { "mediaSource", mediaSource },
+                    { "libraryOptions", libraryOptions },
+                    { "directoryService", directoryService },
+                    { "chapters", chapters },
+                    { "extractImages", extractImages },
+                    { "saveChapters", saveChapters },
+                    { "replaceExistingImages", false },
+                    { "cancellationToken", cancellationToken }
+                },
+                item, mediaSource, libraryOptions, directoryService, chapters);
 
-            return (Task<bool>)_refreshThumbnailImages.Invoke(_thumbnailGenerator, parameters);
+            return (Task<bool>)_refreshThumbnailImages.Invoke(_thumbnailGenerator, args);
         }
 
         public List<Video> FetchExtractTaskItems()
